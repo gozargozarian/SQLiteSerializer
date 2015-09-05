@@ -7,31 +7,6 @@ using System.Runtime.Serialization;
 using System.Text;
 
 namespace SQLiteSerializer {
-	public class SerializedObjectColumn {
-		public string columnName { get; set; }
-		public string columnType { get; set; }
-		public object columnValue { get; set; }
-		public SerializedObjectColumn(string columnName, string columnType, object columnValue) {
-			this.columnName = columnName;
-			this.columnType = columnType;
-			this.columnValue = columnValue;
-		}
-	}
-
-	public class SerializedObjectTable {
-		string tablename;
-		List<SerializedObjectColumn> columns;
-
-		public SerializedObjectTable(string tablename) {
-			this.tablename = tablename;
-			columns = new List<SerializedObjectColumn>();
-		}
-
-		public void AddColumn(SerializedObjectColumn colDef) {
-			columns.Add(colDef);
-        }
-	}
-
 	public class SQLiteSerializer {
 		protected SQLiteConnection globalConn;
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
@@ -39,11 +14,13 @@ namespace SQLiteSerializer {
 
 		protected int primaryKeyCount = 0;
 		protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();
+		protected List<SerializedArray> activeArrays = new List<SerializedArray>();		// TODO: Merge these two, shouldn't be a need to store separate
 		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();
 
+		#region Main Serialization Functions
 		public void Serialize(object target, string databaseConnectionString) {
 			buildInfoTables();
-			buildComplexObjectTables(target);		// if this is just a simple ValueType object, then I shall slap you with a mackrel
+			buildComplexObjectTable(target);		// if this is just a simple ValueType object, then I shall slap you with a mackrel
 
 			// write it all out
 			openSQLConnection(databaseConnectionString);
@@ -59,16 +36,17 @@ namespace SQLiteSerializer {
 
 			return container;
 		}
-
-		protected bool hasBeenSeenBefore(object targetCheck) {
-			return processedComplexObjects.ContainsKey(targetCheck);
-        }
+		#endregion
 
 		#region Internal Serialization Functions
+		protected bool hasBeenSeenBefore(object targetCheck) {
+			return processedComplexObjects.ContainsKey(targetCheck);
+		}
+
 		protected void buildInfoTables() {
 		}
 
-		protected int buildComplexObjectTables(object target) {
+		protected int buildComplexObjectTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (hasBeenSeenBefore(target))
 				return processedComplexObjects[target];		// return the already proc'ed PK
@@ -82,32 +60,92 @@ namespace SQLiteSerializer {
 
 			//localType.Module	- TODO: add this to info tables
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
-			SerializedObjectTable table = new SerializedObjectTable(localType.FullName);
+			SerializedObjectTable table = new SerializedObjectTable(localPK,localType.FullName);
 
 			FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
 			foreach (FieldInfo field in fields) {
 				Type fieldType = field.FieldType;
-				if (fieldType.IsPrimitive || fieldType.IsEnum || fieldType.IsValueType || fieldType.Equals(typeof(string)) || fieldType.IsSubclassOf(typeof(ValueType))) {
-					// we can store this raw
-					SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(target));
-					table.AddColumn(col);
-				} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {		// handle dicts
-					// make a dict entry
-					// foreach the objs
-				} else if (field.FieldType.GetInterface(typeof(IEnumerable<>).FullName) != null) {		// handle all other collections
-					// make an array entry
-					// foreach the objs
-				} else {
-					// this is a complex type (a class or something), so recurse
-					int FK = buildComplexObjectTables(field.GetValue(target));	// we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
-
-                    SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
-					table.AddColumn(col);
-				}
+				serializeSubObject(table,fieldType,field,target);
 			}
 
 			activeTables.Add(table);
+			return localPK;
+		}
+
+		protected void serializeSubObject(SerializedObjectTable table, Type fieldType, FieldInfo field, object parentObj) {
+			// Condition 1: Simple Val
+			if (fieldType.IsPrimitive || fieldType.IsEnum || fieldType.IsValueType || fieldType.Equals(typeof(string)) || fieldType.IsSubclassOf(typeof(ValueType))) {
+				// we can store this raw
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(parentObj));
+				table.AddColumn(col);
+
+				// Condition 2: Dictionaries
+			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
+				// make a dict entry
+				int FK = buildArrayTable(field.GetValue(parentObj));
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				table.AddColumn(col);
+
+				// Condition 3: Handle Enumerable collections like List<>, but not core system arrays
+			} else if (field.FieldType.GetInterface(typeof(IEnumerable<>).FullName) != null && !fieldType.IsArray) {
+				// make an Enumerable entry
+				int FK = buildArrayTable(field.GetValue(parentObj));
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				table.AddColumn(col);
+
+				// Condition 4: System Arrays
+			} else if (fieldType.IsArray) {
+				// make a base array entry
+				int FK = buildArrayTable(field.GetValue(parentObj));
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				table.AddColumn(col);
+
+				// Condition 5: Complex Sub-Component
+			} else {
+				// this is a complex type (a class or something), so recurse
+				int FK = buildComplexObjectTable(field.GetValue(parentObj));   // we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
+
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				table.AddColumn(col);
+			}
+		}
+
+		protected int buildArrayTable(object target) {
+			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
+			if (hasBeenSeenBefore(target))
+				return processedComplexObjects[target];     // return the already proc'ed PK
+
+			int localPK = ++primaryKeyCount;
+			processedComplexObjects.Add(target, localPK);
+			Type localType = target.GetType();
+
+			// put it in the dict list with its PK
+			SerializedArray arrayDef = new SerializedArray(localPK, localType);
+
+			// for each based on special handling
+			switch (arrayDef.ArrayType) {
+				case LinearObjectType.SystemArray:
+					Array holder = (Array)target;
+					for (uint index=0; index < holder.Length; index++) {
+						//serializeSubObject(holder.GetValue(index));
+						arrayDef.AddValues(index,);
+					}
+					break;
+
+				case LinearObjectType.IEnumerableFamily:
+					break;
+
+				case LinearObjectType.IDictionaryFamily:
+					break;
+
+				default:
+					throw new Exception("You fucked up. Go back. Not a recognized array-like object, try serializing as a complex.");
+					//break;
+			}
+
+			// save it and return the Primer as a Foreign Key
+			activeArrays.Add(arrayDef);
 			return localPK;
 		}
 

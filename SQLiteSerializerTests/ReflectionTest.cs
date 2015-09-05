@@ -120,5 +120,28 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(test.ConfirmTestPropNoSetter() == "Something New");
 			Assert.IsTrue(test.ConfirmTestProProp() == "Something New");
 		}
+
+		[TestMethod]
+		public void TestReflectionWhatIsASystemArray() {
+			string[] strArr = new string[50];
+			int[] intArr = new int[25];
+			StringBuilder[] sbArr = new StringBuilder[10];
+
+			Type saType = strArr.GetType();
+			Type iaType = intArr.GetType();
+			Type sbaType = sbArr.GetType();
+
+			Assert.IsTrue(saType.FullName.IndexOf("[]") > 0);
+			Assert.IsTrue(saType.IsArray);
+			Assert.IsTrue(saType.BaseType.FullName == "System.Array");
+
+			Assert.IsTrue(iaType.FullName.IndexOf("[]") > 0);
+			Assert.IsTrue(iaType.IsArray);
+			Assert.IsTrue(iaType.BaseType.FullName == "System.Array");
+
+			Assert.IsTrue(sbaType.FullName.IndexOf("[]") > 0);
+			Assert.IsTrue(sbaType.IsArray);
+			Assert.IsTrue(sbaType.BaseType.FullName == "System.Array");
+		}
 	}
 }
