@@ -22,14 +22,16 @@ namespace SQLiteSerializer {
 		protected int serializedID;
 		protected LinearObjectType serializeHandling;
 		protected string typename;
-		protected string keyType;
-		protected string valueType;
+		protected Type keyType;
+		protected Type valueType;
 		protected List<SerializedArrayItem> linkedItems;
 
 		#region Properties
 		public LinearObjectType ArrayType {
 			get { return serializeHandling; }
 		}
+		public Type KeyType { get { return keyType; } }
+		public Type ValueType { get { return valueType; } }
 		#endregion
 
 		public SerializedArray(int serializedID, Type arraylikeType) {
@@ -38,17 +40,17 @@ namespace SQLiteSerializer {
 			typename = arraylikeType.FullName;
 
 			Type[] genArgs = arraylikeType.GetGenericArguments();
-			keyType = "";
+			keyType = null;
 			if (genArgs.Length == 0 && arraylikeType.IsArray && arraylikeType.BaseType.FullName == "System.Array") {
 				serializeHandling = LinearObjectType.SystemArray;       // your basic array
-				valueType = genArgs[0].FullName;
+				valueType = genArgs[0];
 			} else if (genArgs.Length == 1 && arraylikeType.IsAssignableFrom(typeof(IEnumerable<>)) && !arraylikeType.IsArray) {
 				serializeHandling = LinearObjectType.IEnumerableFamily;
-				valueType = genArgs[0].FullName;
+				valueType = genArgs[0];
 			} else if (genArgs.Length == 2 && arraylikeType.IsAssignableFrom(typeof(IDictionary<,>))) {
 				serializeHandling = LinearObjectType.IDictionaryFamily;
-				keyType = genArgs[0].FullName;
-				valueType = genArgs[1].FullName;
+				keyType = genArgs[0];
+				valueType = genArgs[1];
 			} else { throw new Exception("Constructing SerializedEnumerable: Array-like object cannot be handled by this serializer: Type " + typename); }
 		}
 

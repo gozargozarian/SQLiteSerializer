@@ -7,6 +7,8 @@ using System.Runtime.Serialization;
 using System.Text;
 
 namespace SQLiteSerializer {
+	// TODO: Currently has limitations with processing types that have Generic Arguments with Parameter Constraints
+	// TODO: Pure reference values (simple values that were passed by reference) are duplicated when they are deserialized
 	public class SQLiteSerializer {
 		protected SQLiteConnection globalConn;
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
@@ -19,8 +21,12 @@ namespace SQLiteSerializer {
 
 		#region Main Serialization Functions
 		public void Serialize(object target, string databaseConnectionString) {
+			// build table objects in memory
 			buildInfoTables();
-			buildComplexObjectTable(target);		// if this is just a simple ValueType object, then I shall slap you with a mackrel
+			buildComplexObjectTable(target);        // if this is just a simple ValueType object, then I shall slap you with a mackrel
+
+			// turn the table objects into SQL strings
+			List<SQLiteParameter> bindParams = buildSQLStrings();
 
 			// write it all out
 			openSQLConnection(databaseConnectionString);
@@ -34,13 +40,60 @@ namespace SQLiteSerializer {
 		public T Deserialize<T>(string databaseConnectionString, bool ignoreMissing = false) {
 			T container = default(T);
 
+			/***
+			// wake up generic types:
+			// construct the generic type in order to walk it
+			Type baseGeneric = typeof(IEnumerable<>);
+			Type[] genericArgument = { arrayDef.ValueType };
+			Type constructed = baseGeneric.MakeGenericType(genericArgument);
+			var enumHolder = Activator.CreateInstance(constructed);
+			***/
+
 			return container;
+		}
+		#endregion
+
+		#region String operations
+		protected List<SQLiteParameter> buildSQLStrings() {
+			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
+			//protected StringBuilder sqlDefinitionRegion = new StringBuilder();      // sql here defines tables
+			//protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
+			//protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();
+			//protected List<SerializedArray> activeArrays = new List<SerializedArray>();
+			foreach (SerializedObjectTable table in activeTables) {
+				StringBuilder insertColDef = new StringBuilder();
+				StringBuilder insertColValue = new StringBuilder();
+
+				sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}",table.TableName);
+				sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
+				sqlDataRegion.AppendFormat("INSERT INTO {0}",table.TableName);
+				insertColDef.Append("(UID)");
+				insertColValue.Append("(@v" + bindParams.Count);
+				bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, table.UniqueID));
+
+				foreach (SerializedObjectColumn col in table.Columns) {
+					sqlDefinitionRegion.AppendFormat(",{0} {1}",col.sqlName, col.sqlType);
+
+					insertColDef.AppendFormat(",@v{0}",bindParams.Count);
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
+                }
+
+				sqlDefinitionRegion.AppendFormat(");{0}", Environment.NewLine);
+				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}",insertColDef,insertColValue, Environment.NewLine + Environment.NewLine);
+            }
+
+			sqlDataRegion.Append("VACUUM");		// not sure if this is really needed when we are only doing one write
+			return bindParams;
 		}
 		#endregion
 
 		#region Internal Serialization Functions
 		protected bool hasBeenSeenBefore(object targetCheck) {
 			return processedComplexObjects.ContainsKey(targetCheck);
+		}
+
+		protected bool IsSimpleValue(Type type) {
+			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
 		}
 
 		protected void buildInfoTables() {
@@ -75,7 +128,7 @@ namespace SQLiteSerializer {
 
 		protected void serializeSubObject(SerializedObjectTable table, Type fieldType, FieldInfo field, object parentObj) {
 			// Condition 1: Simple Val
-			if (fieldType.IsPrimitive || fieldType.IsEnum || fieldType.IsValueType || fieldType.Equals(typeof(string)) || fieldType.IsSubclassOf(typeof(ValueType))) {
+			if (IsSimpleValue(fieldType)) {
 				// we can store this raw
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(parentObj));
 				table.AddColumn(col);
@@ -126,17 +179,46 @@ namespace SQLiteSerializer {
 			// for each based on special handling
 			switch (arrayDef.ArrayType) {
 				case LinearObjectType.SystemArray:
-					Array holder = (Array)target;
-					for (uint index=0; index < holder.Length; index++) {
-						//serializeSubObject(holder.GetValue(index));
-						arrayDef.AddValues(index,);
+					Array arrHolder = (Array)target;
+					for (uint index = 0; index < arrHolder.Length; index++) {
+						object val = arrHolder.GetValue(index);
+						if (IsSimpleValue(val.GetType())) {
+							arrayDef.AddValues(index, val);
+						} else {
+							arrayDef.AddValues(index, buildComplexObjectTable(val));
+						}
 					}
 					break;
 
 				case LinearObjectType.IEnumerableFamily:
+					IEnumerable<object> enumHolder = (IEnumerable<object>)target;
+					uint indexCnt = 0;
+					foreach (object item in enumHolder) {
+						if (IsSimpleValue(item.GetType())) {
+							arrayDef.AddValues(indexCnt, item);
+						} else {
+							arrayDef.AddValues(indexCnt, buildComplexObjectTable(item));
+						}
+						indexCnt++;
+                    }
 					break;
 
 				case LinearObjectType.IDictionaryFamily:
+					IDictionary<object,object> dictHolder = (IDictionary<object,object>)target;
+					foreach (KeyValuePair<object,object> item in dictHolder) {
+						object processedKey = item.Key;
+						object processedValue = item.Value;
+						// process the key type
+						if (!IsSimpleValue(processedKey.GetType())) {
+							processedKey = buildComplexObjectTable(processedKey);
+						}
+						// process the value type
+						if (!IsSimpleValue(processedValue.GetType())) {
+							processedValue = buildComplexObjectTable(processedValue);
+						}
+
+						arrayDef.AddValues(processedKey, processedValue);
+					}
 					break;
 
 				default:
