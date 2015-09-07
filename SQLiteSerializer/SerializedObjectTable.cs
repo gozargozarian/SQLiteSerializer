@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace SQLiteSerializer {
+namespace SQLiteSerialization {
 	public class SerializedObjectColumn {
 		public string columnName { get; set; }
 		public string columnType { get; set; }
@@ -13,7 +13,7 @@ namespace SQLiteSerializer {
         }
 		public string sqlShortName {
 			get {
-				switch (columnType.ToLower().Trim()) {
+				switch (columnType.ToLower().Trim().Replace("system.","")) {
 					case "float":
 						return "f_";
 					case "decimal":
@@ -40,6 +40,7 @@ namespace SQLiteSerializer {
 					case "number":
 						return "i_";
 					case "bool":
+					case "boolean":
 						return "b_";
 					case "datetime":
 					case "date":
@@ -52,7 +53,7 @@ namespace SQLiteSerializer {
 		}
 		public string sqlType {
 			get {
-				switch (columnType.ToLower().Trim()) {
+				switch (columnType.ToLower().Trim().Replace("system.", "")) {
 					case "float":
 					case "decimal":
 					case "single":
@@ -77,6 +78,7 @@ namespace SQLiteSerializer {
 					case "number":
 						return "INTEGER";
 					case "bool":
+					case "boolean":
 						return "BOOLEAN";		// this actually becomes NUMERIC, but maybe in an updated version of SQLite...
 					case "datetime":
 					case "date":
@@ -102,6 +104,7 @@ namespace SQLiteSerializer {
 
 		public int UniqueID { get { return serializedID; } }
 		public string TableName { get { return tablename; } }
+		public string TableNameSQL { get { return tablename.Replace(".","_"); } }
 		public List<SerializedObjectColumn> Columns { get { return columns; } }
 
 		public SerializedObjectTable(int serializedID, string tablename) {

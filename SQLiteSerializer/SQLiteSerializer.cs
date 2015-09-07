@@ -6,7 +6,9 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace SQLiteSerializer {
+using System.IO;
+
+namespace SQLiteSerialization {
 	// TODO: Currently has limitations with processing types that have Generic Arguments with Parameter Constraints
 	// TODO: Pure reference values (simple values that were passed by reference) are duplicated when they are deserialized
 	public class SQLiteSerializer {
@@ -21,6 +23,10 @@ namespace SQLiteSerializer {
 
 		#region Main Serialization Functions
 		public void Serialize(object target, string databaseConnectionString) {
+			if (File.Exists(databaseConnectionString.Replace("data source","").Replace("=","").Trim())) {   // TODO: this sucks, do something better later
+				throw new Exception("File already exists, cannot serialize over existing SQLite DB " + databaseConnectionString);
+			}
+
 			// build table objects in memory
 			buildInfoTables();
 			buildComplexObjectTable(target);        // if this is just a simple ValueType object, then I shall slap you with a mackrel
@@ -29,10 +35,13 @@ namespace SQLiteSerializer {
 			List<SQLiteParameter> bindParams = buildSQLStrings();
 
 			// write it all out
+			databaseConnectionString = formatConnectionString(databaseConnectionString);
 			openSQLConnection(databaseConnectionString);
 			if (isSQLiteReady()) {
-				SQLiteCommand cmd = new SQLiteCommand(sqlDefinitionRegion.Append(sqlDataRegion).ToString(), globalConn);
-				cmd.ExecuteNonQuery();
+				string c = sqlDefinitionRegion.Append(sqlDataRegion).ToString();
+                SQLiteCommand cmd = new SQLiteCommand(c, globalConn);
+				cmd.Parameters.AddRange(bindParams.ToArray());
+                cmd.ExecuteNonQuery();
 			}
 			closeSQLConnection();
 		}
@@ -56,25 +65,23 @@ namespace SQLiteSerializer {
 		#region String operations
 		protected List<SQLiteParameter> buildSQLStrings() {
 			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
-			//protected StringBuilder sqlDefinitionRegion = new StringBuilder();      // sql here defines tables
-			//protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
-			//protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();
-			//protected List<SerializedArray> activeArrays = new List<SerializedArray>();
+
 			foreach (SerializedObjectTable table in activeTables) {
 				StringBuilder insertColDef = new StringBuilder();
 				StringBuilder insertColValue = new StringBuilder();
 
-				sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}",table.TableName);
+				sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}",table.TableNameSQL);
 				sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
-				sqlDataRegion.AppendFormat("INSERT INTO {0}",table.TableName);
-				insertColDef.Append("(UID)");
+				sqlDataRegion.AppendFormat("INSERT INTO {0}",table.TableNameSQL);
+				insertColDef.Append("(UID");
 				insertColValue.Append("(@v" + bindParams.Count);
 				bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, table.UniqueID));
 
 				foreach (SerializedObjectColumn col in table.Columns) {
 					sqlDefinitionRegion.AppendFormat(",{0} {1}",col.sqlName, col.sqlType);
 
-					insertColDef.AppendFormat(",@v{0}",bindParams.Count);
+					insertColDef.AppendFormat(",{0}", col.sqlName);
+					insertColValue.AppendFormat(",@v{0}",bindParams.Count);
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
                 }
 
@@ -245,12 +252,16 @@ namespace SQLiteSerializer {
 		}
 
 		// databaseConnectionString = can actually just be a file path, but optional pass complex connection strings
-		protected void openSQLConnection(string databaseConnectionString) {
-			if (databaseConnectionString.IndexOf("URI") < 0)
-				databaseConnectionString = "URI=file:" + databaseConnectionString;
-            globalConn = new SQLiteConnection(databaseConnectionString);
+		protected void openSQLConnection(string connectionString) {
+            globalConn = new SQLiteConnection(connectionString);
 			globalConn.Open();
 		}
+
+		protected string formatConnectionString(string connectionString) {
+			if (connectionString.IndexOf("URI") < 0)
+				connectionString = "data source = " + connectionString;
+            return connectionString;
+        }
 
 		protected void closeSQLConnection() {
 			globalConn.Close();

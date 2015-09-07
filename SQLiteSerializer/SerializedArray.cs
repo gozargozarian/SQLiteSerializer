@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SQLiteSerializer {
+namespace SQLiteSerialization {
 	public enum LinearObjectType : int {
 		None = 0,
 		SystemArray,
