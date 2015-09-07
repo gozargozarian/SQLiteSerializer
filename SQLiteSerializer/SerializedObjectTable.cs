@@ -6,7 +6,8 @@ namespace SQLiteSerialization {
 		public string columnType { get; set; }
 		public object columnValue { get; set; }
 
-		public string sqlName {
+		public string columnTypeSQLSafe { get { return columnType.Replace(".","_"); } }
+        public string sqlName {
 			get {
 				return sqlShortName + columnName;
             }
@@ -47,7 +48,7 @@ namespace SQLiteSerialization {
 					case "time":
 						return "dt_";
 					default:
-						return "?_";		// I hope this blows up your code!
+						return "fk_";		// These will be foreign key objects
 				}
 			}
 		}
@@ -85,7 +86,7 @@ namespace SQLiteSerialization {
 					case "time":
 						return "DATETIME";      // this actually becomes NUMERIC, but maybe in an updated version of SQLite...
 					default:
-						return "TEXT";        // I hope this blows up your code!
+						return "INTEGER";		// The foreign key object
 				}
 			}
 		}

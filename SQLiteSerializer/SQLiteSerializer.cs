@@ -22,9 +22,23 @@ namespace SQLiteSerialization {
 		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();
 
 		#region Main Serialization Functions
-		public void Serialize(object target, string databaseConnectionString) {
+		// clean up all the vars from a previous call
+		public void CleanUp() {
+			try { closeSQLConnection(); } catch { }
+			sqlDefinitionRegion = new StringBuilder();
+			sqlDataRegion = new StringBuilder();
+			primaryKeyCount = 0;
+			activeTables = new List<SerializedObjectTable>();
+			activeArrays = new List<SerializedArray>();
+			processedComplexObjects = new Dictionary<object, int>();
+		}
+
+		public void Serialize(object target, string databaseConnectionString, bool autoDeleteExistingFile=true) {
 			if (File.Exists(databaseConnectionString.Replace("data source","").Replace("=","").Trim())) {   // TODO: this sucks, do something better later
-				throw new Exception("File already exists, cannot serialize over existing SQLite DB " + databaseConnectionString);
+				if (autoDeleteExistingFile)
+					File.Delete(databaseConnectionString.Replace("data source", "").Replace("=", "").Trim());
+				else
+					throw new Exception("File already exists, cannot serialize over existing SQLite DB " + databaseConnectionString);
 			}
 
 			// build table objects in memory
@@ -44,6 +58,7 @@ namespace SQLiteSerialization {
                 cmd.ExecuteNonQuery();
 			}
 			closeSQLConnection();
+			CleanUp();
 		}
 
 		public T Deserialize<T>(string databaseConnectionString, bool ignoreMissing = false) {
@@ -58,6 +73,7 @@ namespace SQLiteSerialization {
 			var enumHolder = Activator.CreateInstance(constructed);
 			***/
 
+			CleanUp();
 			return container;
 		}
 		#endregion
@@ -65,27 +81,40 @@ namespace SQLiteSerialization {
 		#region String operations
 		protected List<SQLiteParameter> buildSQLStrings() {
 			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
+			List<string> createdTables = new List<string>(activeTables.Count);
 
 			foreach (SerializedObjectTable table in activeTables) {
 				StringBuilder insertColDef = new StringBuilder();
 				StringBuilder insertColValue = new StringBuilder();
+				StringBuilder tableDefFK = new StringBuilder();
+				bool doTableCreate = !createdTables.Contains(table.TableNameSQL);
 
-				sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}",table.TableNameSQL);
-				sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
+				if (doTableCreate) {
+					createdTables.Add(table.TableNameSQL);
+                    sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
+					sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
+				}
 				sqlDataRegion.AppendFormat("INSERT INTO {0}",table.TableNameSQL);
 				insertColDef.Append("(UID");
 				insertColValue.Append("(@v" + bindParams.Count);
 				bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, table.UniqueID));
 
 				foreach (SerializedObjectColumn col in table.Columns) {
-					sqlDefinitionRegion.AppendFormat(",{0} {1}",col.sqlName, col.sqlType);
+					if (doTableCreate) {
+						sqlDefinitionRegion.AppendFormat(",{0} {1}", col.sqlName, col.sqlType);
+					}
 
 					insertColDef.AppendFormat(",{0}", col.sqlName);
 					insertColValue.AppendFormat(",@v{0}",bindParams.Count);
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
+
+					// is this a FK linkable?
+					if (doTableCreate && col.sqlName.IndexOf("fk_") == 0) {
+						tableDefFK.AppendFormat(",FOREIGN KEY({0}) REFERENCES {1}(UID)", col.sqlName, col.columnTypeSQLSafe);
+					}
                 }
 
-				sqlDefinitionRegion.AppendFormat(");{0}", Environment.NewLine);
+				if (doTableCreate) sqlDefinitionRegion.AppendFormat("{0});{1}", tableDefFK, Environment.NewLine + Environment.NewLine);
 				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}",insertColDef,insertColValue, Environment.NewLine + Environment.NewLine);
             }
 
@@ -122,11 +151,15 @@ namespace SQLiteSerialization {
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
 			SerializedObjectTable table = new SerializedObjectTable(localPK,localType.FullName);
 
-			FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			if (IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
+				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
+			} else {
+				FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 
-			foreach (FieldInfo field in fields) {
-				Type fieldType = field.FieldType;
-				serializeSubObject(table,fieldType,field,target);
+				foreach (FieldInfo field in fields) {
+					Type fieldType = field.FieldType;
+					serializeSubObject(table, fieldType, field, target);
+				}
 			}
 
 			activeTables.Add(table);

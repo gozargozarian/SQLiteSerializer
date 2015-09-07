@@ -28,6 +28,30 @@ namespace SQLiteSerializerTests {
 		}
 	}
 
+	[Serializable]
+	public class ComplexTest1 {
+		public string text;
+		public int number;
+		public float decimalPoint;
+
+		protected SimpleTest simp1;
+		protected SimpleTest simp2;
+
+		public ComplexTest1() {
+		}
+
+		public void Setup() {
+			text = "This is Text.";
+			number = 23;
+			decimalPoint = 2.45f;
+
+			simp1 = new SimpleTest();
+			simp1.Setup();
+			simp2 = new SimpleTest();
+			simp2.Setup();
+		}
+	}
+
 	[TestClass]
 	public class SimpleSerializerTests {
 		private SQLiteSerializer serializer;
@@ -79,9 +103,10 @@ namespace SQLiteSerializerTests {
 			serializer = new SQLiteSerializer();
 			serializer.Serialize(test, "SimpleValueSerialization01.db");
 			serializer.Serialize(number, "SimpleValueSerialization02.db");
+			serializer = null;
 
-			File.Delete("SimpleValueSerialization01.db");
-			File.Delete("SimpleValueSerialization02.db");
+			try { File.Delete("SimpleValueSerialization01.db"); } catch { }
+			try { File.Delete("SimpleValueSerialization02.db"); } catch { }
 		}
 
 		[TestMethod]
@@ -91,8 +116,21 @@ namespace SQLiteSerializerTests {
 
 			serializer = new SQLiteSerializer();
 			serializer.Serialize(test, "SimpleClassSerialization.db");
+			serializer = null;
 
-			File.Delete("SimpleClassSerialization.db");
+			try { File.Delete("SimpleClassSerialization.db"); } catch { }
         }
+
+		[TestMethod]
+		public void ComplexClassSerializationTest() {
+			ComplexTest1 test = new ComplexTest1();
+			test.Setup();
+
+			serializer = new SQLiteSerializer();
+			serializer.Serialize(test, "ComplexClassSerialization.db");
+			serializer = null;
+
+			try { File.Delete("ComplexClassSerialization.db"); } catch { }
+		}
 	}
 }
