@@ -27,11 +27,14 @@ namespace SQLiteSerialization {
 		protected List<SerializedArrayItem> linkedItems;
 
 		#region Properties
-		public LinearObjectType ArrayType {
+		public int UniqueID { get { return serializedID; } }
+        public LinearObjectType ArrayType {
 			get { return serializeHandling; }
 		}
+		public string TypeName { get { return typename; } }
 		public Type KeyType { get { return keyType; } }
 		public Type ValueType { get { return valueType; } }
+		public List<SerializedArrayItem> Items { get { return linkedItems; } }
 		#endregion
 
 		public SerializedArray(int serializedID, Type arraylikeType) {

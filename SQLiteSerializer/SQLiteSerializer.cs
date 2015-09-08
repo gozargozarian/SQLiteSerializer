@@ -12,14 +12,16 @@ namespace SQLiteSerialization {
 	// TODO: Currently has limitations with processing types that have Generic Arguments with Parameter Constraints
 	// TODO: Pure reference values (simple values that were passed by reference) are duplicated when they are deserialized
 	public class SQLiteSerializer {
+		public static string ArrayTableName = "arrays";
+
 		protected SQLiteConnection globalConn;
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
         protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
 
 		protected int primaryKeyCount = 0;
-		protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();
-		protected List<SerializedArray> activeArrays = new List<SerializedArray>();		// TODO: Merge these two, shouldn't be a need to store separate
-		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();
+		protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();		// list of tables in reverse order seen
+		protected List<SerializedArray> activeArrays = new List<SerializedArray>();					// list of arrays in reverse order seen, stored in activeTables as primary source
+		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();	// list of objects with their UIDs in order seen
 
 		#region Main Serialization Functions
 		// clean up all the vars from a previous call
@@ -88,34 +90,61 @@ namespace SQLiteSerialization {
 				StringBuilder insertColValue = new StringBuilder();
 				StringBuilder tableDefFK = new StringBuilder();
 				bool doTableCreate = !createdTables.Contains(table.TableNameSQL);
+				bool isArrayTable = (table.TableName == ArrayTableName);
 
 				if (doTableCreate) {
 					createdTables.Add(table.TableNameSQL);
-                    sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
-					sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
+					if (isArrayTable) {
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,type INTEGER,typename TEXT,key_type TEXT,value_type TEXT);{1}", ArrayTableName,Environment.NewLine);
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ NUMERIC,__value__ NUMERIC,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
+					} else {
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
+						sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
+					}
 				}
-				sqlDataRegion.AppendFormat("INSERT INTO {0}",table.TableNameSQL);
-				insertColDef.Append("(UID");
-				insertColValue.Append("(@v" + bindParams.Count);
-				bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, table.UniqueID));
+				
+				if (isArrayTable) {
+					SerializedArray sarr = FindArray(table.UniqueID);
+					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
+												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, (int)sarr.ArrayType));
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.TypeName));
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.KeyType.FullName));
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.ValueType.FullName));
+					insertColDef.AppendFormat("INSERT INTO {0}_entries(UID,__key__,__value__", ArrayTableName);
 
-				foreach (SerializedObjectColumn col in table.Columns) {
-					if (doTableCreate) {
-						sqlDefinitionRegion.AppendFormat(",{0} {1}", col.sqlName, col.sqlType);
+					bool firsttime = true;
+					foreach (SerializedArrayItem item in sarr.Items) {
+						if (!firsttime) { insertColValue.Append("),"); firsttime = false; }
+						insertColValue.AppendFormat("(@v{0},@v{1}",bindParams.Count,bindParams.Count + 1);
+						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
+						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
+				} else {
+					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
+					insertColDef.Append("(UID");
+					insertColValue.Append("(@v" + bindParams.Count);
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, table.UniqueID));
 
-					insertColDef.AppendFormat(",{0}", col.sqlName);
-					insertColValue.AppendFormat(",@v{0}",bindParams.Count);
-					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
+					foreach (SerializedObjectColumn col in table.Columns) {
+						if (doTableCreate) {
+							sqlDefinitionRegion.AppendFormat(",{0} {1}", col.sqlName, col.sqlType);
+						}
 
-					// is this a FK linkable?
-					if (doTableCreate && col.sqlName.IndexOf("fk_") == 0) {
-						tableDefFK.AppendFormat(",FOREIGN KEY({0}) REFERENCES {1}(UID)", col.sqlName, col.columnTypeSQLSafe);
+						insertColDef.AppendFormat(",{0}", col.sqlName);
+						insertColValue.AppendFormat(",@v{0}", bindParams.Count);
+						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
+
+						// is this a FK linkable?
+						if (doTableCreate && col.sqlName.IndexOf("fk_") == 0) {
+							tableDefFK.AppendFormat(",FOREIGN KEY({0}) REFERENCES {1}(UID)", col.sqlName, col.columnTypeSQLSafe);
+						}
 					}
-                }
+				}
 
-				if (doTableCreate) sqlDefinitionRegion.AppendFormat("{0});{1}", tableDefFK, Environment.NewLine + Environment.NewLine);
-				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}",insertColDef,insertColValue, Environment.NewLine + Environment.NewLine);
+				if (doTableCreate && !isArrayTable) sqlDefinitionRegion.AppendFormat("{0});{1}{1}", tableDefFK, Environment.NewLine);
+				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}{2}",insertColDef,insertColValue, Environment.NewLine);
             }
 
 			sqlDataRegion.Append("VACUUM");		// not sure if this is really needed when we are only doing one write
@@ -124,20 +153,12 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Internal Serialization Functions
-		protected bool hasBeenSeenBefore(object targetCheck) {
-			return processedComplexObjects.ContainsKey(targetCheck);
-		}
-
-		protected bool IsSimpleValue(Type type) {
-			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
-		}
-
 		protected void buildInfoTables() {
 		}
 
 		protected int buildComplexObjectTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
-			if (hasBeenSeenBefore(target))
+			if (HasBeenSeenBefore(target))
 				return processedComplexObjects[target];		// return the already proc'ed PK
 
 			int localPK = ++primaryKeyCount;
@@ -206,7 +227,7 @@ namespace SQLiteSerialization {
 
 		protected int buildArrayTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
-			if (hasBeenSeenBefore(target))
+			if (HasBeenSeenBefore(target))
 				return processedComplexObjects[target];     // return the already proc'ed PK
 
 			int localPK = ++primaryKeyCount;
@@ -214,6 +235,7 @@ namespace SQLiteSerialization {
 			Type localType = target.GetType();
 
 			// put it in the dict list with its PK
+			SerializedObjectTable arrayTable = new SerializedObjectTable(localPK, ArrayTableName);
 			SerializedArray arrayDef = new SerializedArray(localPK, localType);
 
 			// for each based on special handling
@@ -266,15 +288,36 @@ namespace SQLiteSerialization {
 					//break;
 			}
 
-			// save it and return the Primer as a Foreign Key
+			// save it and return the Primary Key as a Foreign Key
 			activeArrays.Add(arrayDef);
+			activeTables.Add(arrayTable);
 			return localPK;
+		}
+		#endregion
+
+		#region Utility Functions
+		protected SerializedArray FindArray(int uniqueID) {
+			foreach (SerializedArray a in activeArrays) {
+				if (a.UniqueID == uniqueID) {
+					return a;
+				}
+			}
+
+			return null;
 		}
 
 		public bool canSerialize(object target) {
 			Type targetType = target.GetType();
 			return Attribute.IsDefined(targetType, typeof(SerializableAttribute)) || targetType.IsSerializable || (target is ISerializable);
-        }
+		}
+
+		protected bool HasBeenSeenBefore(object targetCheck) {
+			return processedComplexObjects.ContainsKey(targetCheck);
+		}
+
+		protected bool IsSimpleValue(Type type) {
+			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
+		}
 		#endregion
 
 		#region SQLite specific functions

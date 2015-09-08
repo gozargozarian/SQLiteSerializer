@@ -68,6 +68,15 @@ namespace SQLiteSerializerTests {
 		#endregion
 
 		[TestMethod]
+		public void TestStringFormatting() {
+			// I just needed to see if you could replace one argument multiple times
+			string thing = "dog";
+			string test = string.Format("This {0} is like a fat {0}, but much bigger!", thing);
+
+			Assert.IsTrue(test == "This dog is like a fat dog, but much bigger!");
+		}
+
+		[TestMethod]
 		public void TestReflectionProperties() {
 			Garbage test = new Garbage();
 
