@@ -2,13 +2,13 @@
 using System.Text;
 using System.Collections.Generic;
 
-namespace SQLiteSerializerTests.TestClasses {
+namespace SQLiteSerializerTests {
 	[Serializable]
 	public class SimpleArrayContainer {
 		public SimpleArrayContainer() { }
 
 		private static int strCount = 20;
-		private string[] strs;
+		public string[] strs;
 		public void Setup(string appender = "") {
 			strs = new string[strCount];
 			for (uint i = 0; i < strCount; i++) {
@@ -22,7 +22,7 @@ namespace SQLiteSerializerTests.TestClasses {
 		public ComplexArrayContainer() { }
 
 		private static int objCount = 20;
-		private SimpleArrayContainer[] objs;
+		public SimpleArrayContainer[] objs;
 		public void Setup() {
 			objs = new SimpleArrayContainer[objCount];
 			for (uint i = 0; i < objCount; i++) {
@@ -37,7 +37,7 @@ namespace SQLiteSerializerTests.TestClasses {
 		public SimpleListContainer() { }
 
 		private static int strCount = 20;
-		private List<string> strs;
+		public List<string> strs;
 		public void Setup(string appender = "") {
 			strs = new List<string>(strCount);
 			for (uint i = 0; i < strCount; i++) {
@@ -51,7 +51,7 @@ namespace SQLiteSerializerTests.TestClasses {
 		public ComplexListContainer() { }
 
 		private static int objCount = 20;
-		private List<SimpleListContainer> objs;
+		public List<SimpleListContainer> objs;
 		public void Setup() {
 			objs = new List<SimpleListContainer>(objCount);
 			for (uint i = 0; i < objCount; i++) {
@@ -63,11 +63,11 @@ namespace SQLiteSerializerTests.TestClasses {
 	}
 
 	[Serializable]
-	public class SimpledDictionaryContainer {
-		public SimpledDictionaryContainer() { }
+	public class SimpleDictionaryContainer {
+		public SimpleDictionaryContainer() { }
 
 		private static int strCount = 20;
-		private Dictionary<string, uint> strs;
+		public Dictionary<string, uint> strs;
 		public void Setup(string appender = "") {
 			strs = new Dictionary<string, uint>(strCount);
 			for (uint i = 0; i < strCount; i++) {
@@ -81,13 +81,13 @@ namespace SQLiteSerializerTests.TestClasses {
 		public ComplexDictionaryContainer() { }
 
 		private static int objCount = 20;
-		private Dictionary<SimpleListContainer, SimpledDictionaryContainer> objs;
+		public Dictionary<SimpleListContainer, SimpleDictionaryContainer> objs;
 		public void Setup() {
-			objs = new Dictionary<SimpleListContainer, SimpledDictionaryContainer>(objCount);
+			objs = new Dictionary<SimpleListContainer, SimpleDictionaryContainer>(objCount);
 			for (uint i = 0; i < objCount; i++) {
 				var k = new SimpleListContainer();
 				k.Setup(string.Format("Dict #{0} KEY", i));
-				var v = new SimpledDictionaryContainer();
+				var v = new SimpleDictionaryContainer();
 				v.Setup(string.Format("Dict #{0} VALUE", i));
 				objs.Add(k, v);
 			}
