@@ -7,88 +7,88 @@ namespace SQLiteSerializerTests {
 
 		#region System.Array Tests
 		[TestMethod]
-		public void TestArraySerialization() {
+		public void ArraySerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 
 		[TestMethod]
-		public void TestArrayOfObjectsSerialization() {
+		public void ArrayOfObjectsSerializationTest() {
 			ComplexArrayContainer cont = new ComplexArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 
 		[TestMethod]
-		public void TestStandaloneArraySerialization() {
+		public void StandaloneArraySerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
 		}
 
 		[TestMethod]
-		public void TestArrayWithinArraySerialization() {
+		public void ArrayWithinArraySerializationTest() {
 
 		}
 		#endregion
 
 		#region IList Tests
 		[TestMethod]
-		public void TestListSerialization() {
+		public void ListSerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 
 		[TestMethod]
-		public void TestListOfObjectsSerialization() {
+		public void ListOfObjectsSerializationTest() {
 			ComplexListContainer cont = new ComplexListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 
 		[TestMethod]
-		public void TestStandaloneListSerialization() {
+		public void StandaloneListSerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
 		}
 
 		[TestMethod]
-		public void TestListWithinListSerialization() {
+		public void ListWithinListSerializationTest() {
 
 		}
 		#endregion
 
 		#region IDictionary Tests
 		[TestMethod]
-		public void TestDictionarySerialization() {
+		public void DictionarySerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 
 		[TestMethod]
-		public void TestDictionaryOfObjectsSerialization() {
+		public void DictionaryOfObjectsSerializationTest() {
 			ComplexDictionaryContainer cont = new ComplexDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
 		}
 		[TestMethod]
-		public void TestDictionaryOfObjectsKeysOfObjectsSerialization() {
+		public void DictionaryOfObjectsKeysOfObjectsSerializationTest() {
 
 		}
 
 		[TestMethod]
-		public void TestStandaloneDictionarySerialization() {
+		public void StandaloneDictionarySerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
 		}
 
 		[TestMethod]
-		public void TestDictionaryWithinDictionarySerialization() {
+		public void DictionaryWithinDictionarySerializationTest() {
 
 		}
 		#endregion

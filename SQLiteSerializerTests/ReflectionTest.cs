@@ -68,7 +68,7 @@ namespace SQLiteSerializerTests {
 		#endregion
 
 		[TestMethod]
-		public void TestStringFormatting() {
+		public void StringFormattingTest() {
 			// I just needed to see if you could replace one argument multiple times
 			string thing = "dog";
 			string test = string.Format("This {0} is like a fat {0}, but much bigger!", thing);
@@ -77,7 +77,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void TestReflectionProperties() {
+		public void ReflectionPropertiesTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -87,7 +87,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
-		public void TestReflectionFields() {
+		public void ReflectionFieldsTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -97,7 +97,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void TestReflectionSetPrivates() {
+		public void ReflectionSetPrivatesTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -114,7 +114,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void TestReflectionSetAllFields() {
+		public void ReflectionSetAllFieldsTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -131,7 +131,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void TestReflectionWhatIsASystemArray() {
+		public void ReflectionWhatIsASystemArrayTest() {
 			string[] strArr = new string[50];
 			int[] intArr = new int[25];
 			StringBuilder[] sbArr = new StringBuilder[10];
