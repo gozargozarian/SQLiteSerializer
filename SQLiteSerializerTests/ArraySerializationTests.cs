@@ -21,7 +21,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void StandaloneArraySerializationTest() {
+		public void ArrayStandaloneSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
@@ -49,7 +49,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void StandaloneListSerializationTest() {
+		public void ListStandaloneSerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
@@ -81,7 +81,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void StandaloneDictionarySerializationTest() {
+		public void DictionaryStandaloneSerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);

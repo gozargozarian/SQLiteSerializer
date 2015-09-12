@@ -65,7 +65,7 @@ namespace SQLiteSerialization {
 
 		public T Deserialize<T>(string databaseConnectionString, bool ignoreMissing = false) {
 			T container = default(T);
-
+			// TODO: lol!
 			/***
 			// wake up generic types:
 			// construct the generic type in order to walk it
@@ -104,10 +104,12 @@ namespace SQLiteSerialization {
 				}
 				
 				if (isArrayTable) {
+					int UIDParamNo = -1;
 					SerializedArray sarr = FindArray(table.UniqueID);
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
-					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
+					UIDParamNo = bindParams.Count;
+                    bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, (int)sarr.ArrayType));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.TypeName));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.KeyType.FullName));
@@ -116,8 +118,8 @@ namespace SQLiteSerialization {
 
 					bool firsttime = true;
 					foreach (SerializedArrayItem item in sarr.Items) {
-						if (!firsttime) { insertColValue.Append("),"); firsttime = false; }
-						insertColValue.AppendFormat("(@v{0},@v{1}",bindParams.Count,bindParams.Count + 1);
+						if (!firsttime) insertColValue.Append("),"); firsttime = false;
+						insertColValue.AppendFormat("(@v{0},@v{1},@v{2}", UIDParamNo, bindParams.Count,bindParams.Count + 1);
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
@@ -197,22 +199,22 @@ namespace SQLiteSerialization {
 				// Condition 2: Dictionaries
 			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				// make a dict entry
-				int FK = buildArrayTable(field.GetValue(parentObj));
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
 				table.AddColumn(col);
 
 				// Condition 3: Handle Enumerable collections like List<>, but not core system arrays
 			} else if (field.FieldType.GetInterface(typeof(IEnumerable<>).FullName) != null && !fieldType.IsArray) {
 				// make an Enumerable entry
-				int FK = buildArrayTable(field.GetValue(parentObj));
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
 				table.AddColumn(col);
 
 				// Condition 4: System Arrays
 			} else if (fieldType.IsArray) {
 				// make a base array entry
-				int FK = buildArrayTable(field.GetValue(parentObj));
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				int FK = buildArrayTable(field.GetValue(parentObj));		// fieldType.FullName - may need this later
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
 				table.AddColumn(col);
 
 				// Condition 5: Complex Sub-Component
