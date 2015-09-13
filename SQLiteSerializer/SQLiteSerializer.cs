@@ -7,6 +7,7 @@ using System.Runtime.Serialization;
 using System.Text;
 
 using System.IO;
+using System.Collections;
 
 namespace SQLiteSerialization {
 	// TODO: Currently has limitations with processing types that have Generic Arguments with Parameter Constraints
@@ -270,13 +271,14 @@ namespace SQLiteSerialization {
 					break;
 
 				case LinearObjectType.IDictionaryFamily:
-					IDictionary<object,object> dictHolder = (IDictionary<object,object>)target;
-					foreach (KeyValuePair<object,object> item in dictHolder) {
-						object processedKey = item.Key;
-						object processedValue = item.Value;
+					IDictionary dictHolder = (IDictionary)target;
+					foreach (object key in dictHolder.Keys) {
+						object processedKey = key;
+						object processedValue = dictHolder[key];
+
 						// process the key type
-						if (!IsSimpleValue(processedKey.GetType())) {
-							processedKey = buildComplexObjectTable(processedKey);
+						if (!IsSimpleValue(key.GetType())) {
+							processedKey = buildComplexObjectTable(key);
 						}
 						// process the value type
 						if (!IsSimpleValue(processedValue.GetType())) {
@@ -328,9 +330,9 @@ namespace SQLiteSerialization {
 			Type[] genArgs = type.GetGenericArguments();
 			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
 				return true;
-			} else if (genArgs.Length == 1 && type.IsAssignableFrom(typeof(IEnumerable<>)) && !type.IsArray) {
+			} else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
 				return true;
-			} else if (genArgs.Length == 2 && type.IsAssignableFrom(typeof(IDictionary<,>))) {
+			} else if (genArgs.Length == 2 && type.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				return true;
 			}
 

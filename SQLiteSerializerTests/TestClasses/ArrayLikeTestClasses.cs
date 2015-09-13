@@ -68,10 +68,10 @@ namespace SQLiteSerializerTests {
 
 		private static int strCount = 20;
 		public Dictionary<string, uint> strs;
-		public void Setup(string appender = "") {
+		public void Setup(string prepender = "") {
 			strs = new Dictionary<string, uint>(strCount);
 			for (uint i = 0; i < strCount; i++) {
-				strs.Add("A string " + appender, i);
+				strs.Add(prepender + "A string #" + i, i);
 			}
 		}
 	}
@@ -86,9 +86,9 @@ namespace SQLiteSerializerTests {
 			objs = new Dictionary<SimpleListContainer, SimpleDictionaryContainer>(objCount);
 			for (uint i = 0; i < objCount; i++) {
 				var k = new SimpleListContainer();
-				k.Setup(string.Format("Dict #{0} KEY", i));
+				k.Setup(string.Format("Dict #{0} KEY:", i));
 				var v = new SimpleDictionaryContainer();
-				v.Setup(string.Format("Dict #{0} VALUE", i));
+				v.Setup(string.Format("Dict #{0} VALUE:", i));
 				objs.Add(k, v);
 			}
 		}
