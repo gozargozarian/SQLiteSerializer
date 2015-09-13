@@ -85,6 +85,7 @@ namespace SQLiteSerialization {
 		protected List<SQLiteParameter> buildSQLStrings() {
 			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
 			List<string> createdTables = new List<string>(activeTables.Count);
+			sqlDefinitionRegion.AppendFormat("CREATE TABLE serial_info(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,location TEXT);{0}{0}",Environment.NewLine);
 
 			foreach (SerializedObjectTable table in activeTables) {
 				StringBuilder insertColDef = new StringBuilder();
@@ -107,6 +108,7 @@ namespace SQLiteSerialization {
 				if (isArrayTable) {
 					int UIDParamNo = -1;
 					SerializedArray sarr = FindArray(table.UniqueID);
+					sqlDataRegion.AppendFormat("INSERT INTO serial_info(UID,location) VALUES ({0},'{1}');{2}{2}", sarr.UniqueID, ArrayTableName, Environment.NewLine);
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
 					UIDParamNo = bindParams.Count;
@@ -124,7 +126,8 @@ namespace SQLiteSerialization {
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
-				} else {
+                } else {
+					sqlDataRegion.AppendFormat("INSERT INTO serial_info(UID,location) VALUES ({0},'{1}');{2}{2}", table.UniqueID, table.TableNameSQL, Environment.NewLine);
 					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
 					insertColDef.Append("(UID");
 					insertColValue.Append("(@v" + bindParams.Count);
