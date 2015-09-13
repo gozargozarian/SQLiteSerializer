@@ -161,15 +161,17 @@ namespace SQLiteSerialization {
 		protected int buildComplexObjectTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (HasBeenSeenBefore(target))
-				return processedComplexObjects[target];		// return the already proc'ed PK
-
-			int localPK = ++primaryKeyCount;
-			processedComplexObjects.Add(target, localPK);
+				return processedComplexObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
 			if (!canSerialize(target))
 				throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
+			if (IsArrayLike(localType))
+				return buildArrayTable(target);
 
+			int localPK = ++primaryKeyCount;
+			processedComplexObjects.Add(target, localPK);
+			
 			//localType.Module	- TODO: add this to info tables
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
 			SerializedObjectTable table = new SerializedObjectTable(localPK,localType.FullName);
@@ -320,6 +322,21 @@ namespace SQLiteSerialization {
 		protected bool IsSimpleValue(Type type) {
 			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
 		}
+
+		// Is there a better word for "Array-like"? I keep going between Enumerable or Array-like. Iterable?
+		protected bool IsArrayLike(Type type) {
+			Type[] genArgs = type.GetGenericArguments();
+			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
+				return true;
+			} else if (genArgs.Length == 1 && type.IsAssignableFrom(typeof(IEnumerable<>)) && !type.IsArray) {
+				return true;
+			} else if (genArgs.Length == 2 && type.IsAssignableFrom(typeof(IDictionary<,>))) {
+				return true;
+			}
+
+			return false;
+		}
+
 		#endregion
 
 		#region SQLite specific functions
