@@ -14,13 +14,14 @@ namespace SQLiteSerialization {
 	// TODO: Pure reference values (simple values that were passed by reference) are duplicated when they are deserialized
 	public class SQLiteSerializer {
 		public static string ArrayTableName = "arrays";
+		public static string SerialInfoTableName = "serial_info";
 
 		protected SQLiteConnection globalConn;
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
         protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
 
 		protected int primaryKeyCount = 0;
-		protected List<SerializedObjectTable> activeTables = new List<SerializedObjectTable>();		// list of tables in reverse order seen
+		protected List<SerializedObjectTableRow> activeTables = new List<SerializedObjectTableRow>();		// list of tables in reverse order seen
 		protected List<SerializedArray> activeArrays = new List<SerializedArray>();					// list of arrays in reverse order seen, stored in activeTables as primary source
 		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();	// list of objects with their UIDs in order seen
 
@@ -31,7 +32,7 @@ namespace SQLiteSerialization {
 			sqlDefinitionRegion = new StringBuilder();
 			sqlDataRegion = new StringBuilder();
 			primaryKeyCount = 0;
-			activeTables = new List<SerializedObjectTable>();
+			activeTables = new List<SerializedObjectTableRow>();
 			activeArrays = new List<SerializedArray>();
 			processedComplexObjects = new Dictionary<object, int>();
 		}
@@ -65,7 +66,14 @@ namespace SQLiteSerialization {
 		}
 
 		public T Deserialize<T>(string databaseConnectionString, bool ignoreMissing = false) {
-			T container = default(T);
+			// connect and read the SQL data
+			openSQLConnection(databaseConnectionString);
+			if (!isSQLiteReady()) {
+				throw new Exception("The SQLite database could not be made ready for reading.");
+			}
+			Dictionary<int,string> serialTable = readSerialSQLTable();
+			T container = readSQLTableToObject<T>(1,serialTable);
+
 			// TODO: lol!
 			/***
 			// wake up generic types:
@@ -75,7 +83,7 @@ namespace SQLiteSerialization {
 			Type constructed = baseGeneric.MakeGenericType(genericArgument);
 			var enumHolder = Activator.CreateInstance(constructed);
 			***/
-
+			closeSQLConnection();
 			CleanUp();
 			return container;
 		}
@@ -85,9 +93,9 @@ namespace SQLiteSerialization {
 		protected List<SQLiteParameter> buildSQLStrings() {
 			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
 			List<string> createdTables = new List<string>(activeTables.Count);
-			sqlDefinitionRegion.AppendFormat("CREATE TABLE serial_info(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,location TEXT);{0}{0}",Environment.NewLine);
+			sqlDefinitionRegion.AppendFormat("CREATE TABLE {1}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,location TEXT);{0}{0}",Environment.NewLine, SerialInfoTableName);
 
-			foreach (SerializedObjectTable table in activeTables) {
+			foreach (SerializedObjectTableRow table in activeTables) {
 				StringBuilder insertColDef = new StringBuilder();
 				StringBuilder insertColValue = new StringBuilder();
 				StringBuilder tableDefFK = new StringBuilder();
@@ -108,7 +116,7 @@ namespace SQLiteSerialization {
 				if (isArrayTable) {
 					int UIDParamNo = -1;
 					SerializedArray sarr = FindArray(table.UniqueID);
-					sqlDataRegion.AppendFormat("INSERT INTO serial_info(UID,location) VALUES ({0},'{1}');{2}{2}", sarr.UniqueID, ArrayTableName, Environment.NewLine);
+					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}",new object[] { sarr.UniqueID, ArrayTableName, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
 					UIDParamNo = bindParams.Count;
@@ -127,7 +135,7 @@ namespace SQLiteSerialization {
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
                 } else {
-					sqlDataRegion.AppendFormat("INSERT INTO serial_info(UID,location) VALUES ({0},'{1}');{2}{2}", table.UniqueID, table.TableNameSQL, Environment.NewLine);
+					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}", new object[] { table.UniqueID, table.TableNameSQL, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
 					insertColDef.Append("(UID");
 					insertColValue.Append("(@v" + bindParams.Count);
@@ -162,6 +170,39 @@ namespace SQLiteSerialization {
 		protected void buildInfoTables() {
 		}
 
+		protected T readSQLTableToObject<T>(int UID,Dictionary<int,string> serialTable) {
+			T container = default(T);
+
+			string tablename = serialTable[UID];
+            Type localType = container.GetType();
+
+			if (tablename == ArrayTableName) {
+				// TODO: For entries in the array table
+				// TODO: readOneArrayEntry() ... blah blah blah
+			} else {
+				SerializedObjectTableRow table = readOneTableEntry(primaryKeyCount, tablename);
+				if (IsSimpleValue(localType)) {
+					container = (T)table.Columns.Find(x => x.columnName.Equals("__value__")).columnValue;
+                } else {
+					FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+					foreach (FieldInfo field in fields) {
+						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.EndsWith(field.Name));
+                        object val = col.columnValue;
+						if (!IsSimpleValue(field.GetType())) {
+							Type[] genericArgument = { field.GetType() };
+							// do something awful...
+							val = this.GetType().GetMethod("readSQLTableToObject")
+								.MakeGenericMethod(genericArgument)
+								.Invoke(this,new object[] { (int)val, serialTable });
+						}
+						field.SetValue(container,val);
+					}
+				}
+			}
+
+			return container;
+		}
+
 		protected int buildComplexObjectTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (HasBeenSeenBefore(target))
@@ -178,7 +219,7 @@ namespace SQLiteSerialization {
 			
 			//localType.Module	- TODO: add this to info tables
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
-			SerializedObjectTable table = new SerializedObjectTable(localPK,localType.FullName);
+			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType.FullName);
 
 			if (IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
 				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
@@ -195,7 +236,7 @@ namespace SQLiteSerialization {
 			return localPK;
 		}
 
-		protected void serializeSubObject(SerializedObjectTable table, Type fieldType, FieldInfo field, object parentObj) {
+		protected void serializeSubObject(SerializedObjectTableRow table, Type fieldType, FieldInfo field, object parentObj) {
 			// Condition 1: Simple Val
 			if (IsSimpleValue(fieldType)) {
 				// we can store this raw
@@ -243,7 +284,7 @@ namespace SQLiteSerialization {
 			Type localType = target.GetType();
 
 			// put it in the dict list with its PK
-			SerializedObjectTable arrayTable = new SerializedObjectTable(localPK, ArrayTableName);
+			SerializedObjectTableRow arrayTable = new SerializedObjectTableRow(localPK, ArrayTableName);
 			SerializedArray arrayDef = new SerializedArray(localPK, localType);
 
 			// for each based on special handling
@@ -365,6 +406,50 @@ namespace SQLiteSerialization {
 
 		protected void closeSQLConnection() {
 			globalConn.Close();
+		}
+
+		protected Dictionary<int,string> readSerialSQLTable() {
+			Dictionary<int, string> serialTable = new Dictionary<int, string>();
+            string sql = string.Format("SELECT UID,location FROM {0} ORDER BY UID", SerialInfoTableName);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+
+			while (dr.Read()) {
+				serialTable.Add( Convert.ToInt32(dr["UID"]), Convert.ToString(dr["location"]));
+			}
+
+			return serialTable;
+		}
+
+		protected SerializedObjectTableRow readOneTableEntry(int UID,string tablename) {
+			SerializedObjectTableRow entry = new SerializedObjectTableRow(UID, tablename);
+
+			string sql = string.Format("SELECT * FROM {0} WHERE UID={1} LIMIT 1", tablename, UID);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+			while (dr.Read()) {
+				for (int ci=0; ci<dr.FieldCount; ci++) {
+					string colname = dr.GetName(ci);
+					string coltype = colname.Split(new char[] { '_' })[0];
+					object colval = dr.GetValue(ci);
+
+					entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
+                }
+			}
+			return entry;
+
+			// TODO: Make this faster by using the below code to read entire table the first time requested and cache it. Then, return each row on each call
+			/***
+			 SqlConnection conn = new SqlConnection("connectionstringhere");
+            SqlCommand cmd = new SqlCommand("SELECT * FROM TABLE", conn);
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+            foreach (DataRow dr in dt.Rows)
+            {
+                MyFunction(dr["Id"].ToString(), dr["Name"].ToString());
+            }
+			***/
 		}
 		#endregion
 	}

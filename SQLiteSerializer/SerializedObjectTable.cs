@@ -1,7 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace SQLiteSerialization {
-	public class SerializedObjectColumn {
+	public class SerializedObjectColumn : IEquatable<SerializedObjectColumn> {
 		public string columnName { get; set; }
 		public string columnType { get; set; }
 		public object columnValue { get; set; }
@@ -96,9 +97,23 @@ namespace SQLiteSerialization {
 			this.columnType = columnType;
 			this.columnValue = columnValue;
 		}
+
+		public override bool Equals(object obj) {
+			if (obj == null) return false;
+			SerializedObjectColumn objAsSelf = obj as SerializedObjectColumn;
+			if (objAsSelf == null) return false;
+			else return Equals(objAsSelf);
+		}
+		public bool Equals(SerializedObjectColumn other) {
+			if (other == null) return false;
+			return (columnName.Equals(other.columnName));
+		}
+		public override int GetHashCode() {
+			return columnName.GetHashCode();
+		}
 	}
 
-	public class SerializedObjectTable {
+	public class SerializedObjectTableRow {
 		protected int serializedID;
 		protected string tablename;
 		protected List<SerializedObjectColumn> columns;
@@ -108,7 +123,7 @@ namespace SQLiteSerialization {
 		public string TableNameSQL { get { return tablename.Replace(".","_"); } }
 		public List<SerializedObjectColumn> Columns { get { return columns; } }
 
-		public SerializedObjectTable(int serializedID, string tablename) {
+		public SerializedObjectTableRow(int serializedID, string tablename) {
 			this.serializedID = serializedID;
 			this.tablename = tablename;
 			columns = new List<SerializedObjectColumn>();
