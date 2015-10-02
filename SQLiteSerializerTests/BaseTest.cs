@@ -28,5 +28,10 @@ namespace SQLiteSerializerTests {
 			serializer.Serialize(testObj, string.Format("{0}.db", testContextInstance.TestName));
 			serializer = null;
 		}
+
+		public T MyTestDeserializeRun<T>() {
+			serializer = new SQLiteSerializer();
+			return serializer.Deserialize<T>(string.Format("{0}.db", testContextInstance.TestName));
+		}
 	}
 }

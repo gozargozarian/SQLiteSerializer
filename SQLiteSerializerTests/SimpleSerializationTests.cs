@@ -9,12 +9,18 @@ namespace SQLiteSerializerTests {
 		public void SimpleValueStringSerializationTest() {
 			string test = "This is a test";
 			MyTestSerializeRun(test);
-		}
+
+			string result = MyTestDeserializeRun<string>();
+			Assert.AreEqual(test, result);
+        }
 
 		[TestMethod]
 		public void SimpleValueIntSerializationTest() {
-			int number = 400;
-			MyTestSerializeRun(number);
+			int test = 400;
+			MyTestSerializeRun(test);
+
+			int result = MyTestDeserializeRun<int>();
+			Assert.AreEqual(test, result);
 		}
 
 		[TestMethod]
@@ -23,14 +29,20 @@ namespace SQLiteSerializerTests {
 			test.Setup();
 
 			MyTestSerializeRun(test);
+
+			SimpleTest result = MyTestDeserializeRun<SimpleTest>();
+			Assert.AreEqual(test, result);
 		}
 
 		[TestMethod]
 		public void ComplexClassSerializationTest() {
-			ComplexTest1 test = new ComplexTest1();
+			ComplexTest test = new ComplexTest();
 			test.Setup();
 
 			MyTestSerializeRun(test);
+
+			ComplexTest result = MyTestDeserializeRun<ComplexTest>();
+			Assert.AreEqual(test, result);
 		}
 
 		[TestMethod]
@@ -42,6 +54,9 @@ namespace SQLiteSerializerTests {
 			test.stest3 = test.stest1;
 
 			MyTestSerializeRun(test);
+
+			MultiSameClass result = MyTestDeserializeRun<MultiSameClass>();
+			Assert.AreEqual(test, result);
 		}
 
 		[TestMethod]
@@ -52,6 +67,9 @@ namespace SQLiteSerializerTests {
 			test.stest3 = null;
 
 			MyTestSerializeRun(test);
+
+			MultiSameClass result = MyTestDeserializeRun<MultiSameClass>();
+			Assert.AreEqual(test, result);
 		}
 	}
 }

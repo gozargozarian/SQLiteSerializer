@@ -53,7 +53,6 @@ namespace SQLiteSerialization {
 			List<SQLiteParameter> bindParams = buildSQLStrings();
 
 			// write it all out
-			databaseConnectionString = formatConnectionString(databaseConnectionString);
 			openSQLConnection(databaseConnectionString);
 			if (isSQLiteReady()) {
 				string c = sqlDefinitionRegion.Append(sqlDataRegion).ToString();
@@ -171,36 +170,52 @@ namespace SQLiteSerialization {
 		}
 
 		protected T readSQLTableToObject<T>(int UID,Dictionary<int,string> serialTable) {
-			T container = default(T);
+			T container = (T)createUnintializedObject(typeof(T));
 
 			string tablename = serialTable[UID];
-            Type localType = container.GetType();
+            Type localType = typeof(T);
 
 			if (tablename == ArrayTableName) {
 				// TODO: For entries in the array table
-				// TODO: readOneArrayEntry() ... blah blah blah
+				readAllArrayEntries<T>(UID,container);
 			} else {
-				SerializedObjectTableRow table = readOneTableEntry(primaryKeyCount, tablename);
+				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
 				if (IsSimpleValue(localType)) {
-					container = (T)table.Columns.Find(x => x.columnName.Equals("__value__")).columnValue;
+					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
+                    container = (T)Convert.ChangeType(val,typeof(T));
                 } else {
 					FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 					foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.EndsWith(field.Name));
                         object val = col.columnValue;
-						if (!IsSimpleValue(field.GetType())) {
-							Type[] genericArgument = { field.GetType() };
+						if (!IsSimpleValue(field.FieldType)) {
+							Type[] genericArgument = { field.FieldType };
 							// do something awful...
 							val = this.GetType().GetMethod("readSQLTableToObject")
 								.MakeGenericMethod(genericArgument)
 								.Invoke(this,new object[] { (int)val, serialTable });
 						}
-						field.SetValue(container,val);
+						field.SetValue(container, Convert.ChangeType(val, field.FieldType));
 					}
 				}
 			}
 
 			return container;
+		}
+
+		protected void readAllArrayEntries<T>(int UID,T passedArray) {
+			if (passedArray.GetType().IsArray) {
+				var iterHolder = passedArray as Array;
+				List<object> items = new List<object>();
+				//passedArray.GetType().GetElementType();
+
+				Dictionary<object,object> entries = readArrayTableEntries(UID);
+				foreach (KeyValuePair<object,object> pair in entries) {
+					items.Add(pair.Value);
+				}
+
+				iterHolder = items.ToArray();
+            }
 		}
 
 		protected int buildComplexObjectTable(object target) {
@@ -346,6 +361,18 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Utility Functions
+		protected object createUnintializedObject(Type t) {
+			try {
+				if (t.Name == "String")     // strings need specific handling of all the types in C#
+					return "";
+				else
+					return Activator.CreateInstance(t); // give it a chance...
+			} catch {
+				// ... oh well
+				return FormatterServices.GetUninitializedObject(t);
+			}
+		}
+
 		protected SerializedArray FindArray(int uniqueID) {
 			foreach (SerializedArray a in activeArrays) {
 				if (a.UniqueID == uniqueID) {
@@ -394,7 +421,7 @@ namespace SQLiteSerialization {
 
 		// databaseConnectionString = can actually just be a file path, but optional pass complex connection strings
 		protected void openSQLConnection(string connectionString) {
-            globalConn = new SQLiteConnection(connectionString);
+            globalConn = new SQLiteConnection(formatConnectionString(connectionString));
 			globalConn.Open();
 		}
 
@@ -419,6 +446,21 @@ namespace SQLiteSerialization {
 			}
 
 			return serialTable;
+		}
+
+		protected Dictionary<object, object> readArrayTableEntries(int UID) {
+			Dictionary<object, object> arrayEntries = new Dictionary<object, object>();
+			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+
+			while (dr.Read()) {
+				object key = dr["__key__"];
+				object val = dr["__value__"];
+				arrayEntries.Add(key,val);
+			}
+
+			return arrayEntries;
 		}
 
 		protected SerializedObjectTableRow readOneTableEntry(int UID,string tablename) {
