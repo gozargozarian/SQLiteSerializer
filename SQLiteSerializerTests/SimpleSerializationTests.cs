@@ -71,5 +71,16 @@ namespace SQLiteSerializerTests {
 			MultiSameClass result = MyTestDeserializeRun<MultiSameClass>();
 			Assert.AreEqual(test, result);
 		}
+
+		[TestMethod]
+		public void SimilarVarNamesTest() {
+			SimilarVarClass test = new SimilarVarClass();
+			test.Setup();
+
+			MyTestSerializeRun(test);
+
+			SimilarVarClass result = MyTestDeserializeRun<SimilarVarClass>();
+			Assert.AreEqual(test, result);
+        }
 	}
 }

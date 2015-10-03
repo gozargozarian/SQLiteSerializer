@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace SQLiteSerializerTests {
 	[Serializable]
@@ -91,6 +92,45 @@ namespace SQLiteSerializerTests {
 				v.Setup(string.Format("Dict #{0} VALUE:", i));
 				objs.Add(k, v);
 			}
+		}
+	}
+
+	[Serializable]
+	public class DifferentArrayTypes :IEquatable<DifferentArrayTypes> {
+		public DifferentArrayTypes() { }
+
+		public int[] arrInts;
+		public float[] arrFloats;
+		public long[] arrLongs;
+		public Single[] arrSingles;
+		public double[] arrDoubles;
+		public string[] arrStrings;
+		public char[] arrChars;
+
+		public void Setup() {
+			arrInts = new int[10]{ 1,2,3,4,5,6,7,8,9,10 };
+			arrFloats = new float[10] { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 6.1f, 7.1f, 8.1f, 9.1f, 10.1f };
+			arrLongs = new long[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+			arrSingles = new Single[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+			arrDoubles = new double[10] { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 6.1f, 7.1f, 8.1f, 9.1f, 10.1f };
+			arrStrings = new string[10] { "one","two","three","four","five","six","seven","eight","nine","ten" };
+			arrChars = new char[10] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j' };
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as DifferentArrayTypes)); }
+		public bool Equals(DifferentArrayTypes other) {
+			return (
+				arrInts.OrderBy(a => a).SequenceEqual(other.arrInts.OrderBy(a => a))
+				&& arrFloats.OrderBy(a => a).SequenceEqual(other.arrFloats.OrderBy(a => a))
+				&& arrLongs.OrderBy(a => a).SequenceEqual(other.arrLongs.OrderBy(a => a))
+				&& arrSingles.OrderBy(a => a).SequenceEqual(other.arrSingles.OrderBy(a => a))
+				&& arrDoubles.OrderBy(a => a).SequenceEqual(other.arrDoubles.OrderBy(a => a))
+				&& arrStrings.OrderBy(a => a).SequenceEqual(other.arrStrings.OrderBy(a => a))
+				&& arrChars.OrderBy(a => a).SequenceEqual(other.arrChars.OrderBy(a => a))
+			);
 		}
 	}
 }

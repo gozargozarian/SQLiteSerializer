@@ -5,6 +5,9 @@ using System.Data.SQLite;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.RegularExpressions;
+
+using System.Linq;
 
 using System.IO;
 using System.Collections;
@@ -114,7 +117,7 @@ namespace SQLiteSerialization {
 				
 				if (isArrayTable) {
 					int UIDParamNo = -1;
-					SerializedArray sarr = FindArray(table.UniqueID);
+					SerializedArray sarr = findArray(table.UniqueID);
 					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}",new object[] { sarr.UniqueID, ArrayTableName, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
@@ -170,63 +173,83 @@ namespace SQLiteSerialization {
 		}
 
 		protected T readSQLTableToObject<T>(int UID,Dictionary<int,string> serialTable) {
-			T container = (T)createUnintializedObject(typeof(T));
-
 			string tablename = serialTable[UID];
             Type localType = typeof(T);
 
 			if (tablename == ArrayTableName) {
-				// TODO: For entries in the array table
-				readAllArrayEntries<T>(UID,container);
+				return readAllArrayEntries<T>(UID);
 			} else {
+				T container = (T)createUnintializedObject(typeof(T));
 				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
-				if (IsSimpleValue(localType)) {
+				if (isSimpleValue(localType)) {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
                     container = (T)Convert.ChangeType(val,typeof(T));
                 } else {
 					FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 					foreach (FieldInfo field in fields) {
-						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.EndsWith(field.Name));
+						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals(field.Name));
                         object val = col.columnValue;
-						if (!IsSimpleValue(field.FieldType)) {
+						if (!isSimpleValue(field.FieldType)) {
 							Type[] genericArgument = { field.FieldType };
 							// do something awful...
-							val = this.GetType().GetMethod("readSQLTableToObject")
-								.MakeGenericMethod(genericArgument)
-								.Invoke(this,new object[] { (int)val, serialTable });
+							val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+									.MakeGenericMethod(genericArgument)
+									.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)), serialTable });
 						}
 						field.SetValue(container, Convert.ChangeType(val, field.FieldType));
 					}
 				}
+				return container;
 			}
-
-			return container;
 		}
 
-		protected void readAllArrayEntries<T>(int UID,T passedArray) {
-			if (passedArray.GetType().IsArray) {
-				var iterHolder = passedArray as Array;
+		protected T readAllArrayEntries<T>(int UID) {
+			T container = default(T);
+
+            if (typeof(T).IsArray) {
 				List<object> items = new List<object>();
+				Type containerType = typeof(T).GetElementType();
 				//passedArray.GetType().GetElementType();
 
 				Dictionary<object,object> entries = readArrayTableEntries(UID);
 				foreach (KeyValuePair<object,object> pair in entries) {
 					items.Add(pair.Value);
+                }
+				Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
+				for (int i = 0; i < items.Count; i++) {
+					completeArr.SetValue(Convert.ChangeType(items[i], containerType), i);       // ensure each item is in correct format from SQLite
 				}
+				container = (T)Convert.ChangeType(completeArr, typeof(T));
 
-				iterHolder = items.ToArray();
-            }
+				//(T)Convert.ChangeType(completeArr.Cast<int>().ToArray(),typeof(T))
+				// do something even more awful...
+				//Type[] genericArgument = { containerType };
+				//var enumerable = completeArr.GetType().GetMethod("Cast").MakeGenericMethod(genericArgument).Invoke(completeArr,null);
+				//var finalForm = enumerable.GetType().GetMethod("ToArray").Invoke(enumerable,null);
+				//container = (T)Convert.ChangeType(finalForm, typeof(T));
+
+				//container = (T)Convert.ChangeType(cont, typeof(T));
+				
+
+				
+				//container = (T)((object)items.ToArray());
+
+				//container = (T)createUnintializedObject(typeof(T),items.Count);     // kind of unnessecary given below
+				//object[] holder = items.ToArray();
+				//container = (T)Convert.ChangeType(holder,typeof(T));
+			}
+			return container;
 		}
 
 		protected int buildComplexObjectTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
-			if (HasBeenSeenBefore(target))
+			if (hasBeenSeenBefore(target))
 				return processedComplexObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
 			if (!canSerialize(target))
 				throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
-			if (IsArrayLike(localType))
+			if (isArrayLike(localType))
 				return buildArrayTable(target);
 
 			int localPK = ++primaryKeyCount;
@@ -236,7 +259,7 @@ namespace SQLiteSerialization {
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
 			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType.FullName);
 
-			if (IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
+			if (isSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
 				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
 			} else {
 				FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -253,7 +276,7 @@ namespace SQLiteSerialization {
 
 		protected void serializeSubObject(SerializedObjectTableRow table, Type fieldType, FieldInfo field, object parentObj) {
 			// Condition 1: Simple Val
-			if (IsSimpleValue(fieldType)) {
+			if (isSimpleValue(fieldType)) {
 				// we can store this raw
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(parentObj));
 				table.AddColumn(col);
@@ -291,7 +314,7 @@ namespace SQLiteSerialization {
 
 		protected int buildArrayTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
-			if (HasBeenSeenBefore(target))
+			if (hasBeenSeenBefore(target))
 				return processedComplexObjects[target];     // return the already proc'ed PK
 
 			int localPK = ++primaryKeyCount;
@@ -308,7 +331,7 @@ namespace SQLiteSerialization {
 					Array arrHolder = (Array)target;
 					for (uint index = 0; index < arrHolder.Length; index++) {
 						object val = arrHolder.GetValue(index);
-						if (IsSimpleValue(val.GetType())) {
+						if (isSimpleValue(val.GetType())) {
 							arrayDef.AddValues(index, val);
 						} else {
 							arrayDef.AddValues(index, buildComplexObjectTable(val));
@@ -320,7 +343,7 @@ namespace SQLiteSerialization {
 					IEnumerable<object> enumHolder = (IEnumerable<object>)target;
 					uint indexCnt = 0;
 					foreach (object item in enumHolder) {
-						if (IsSimpleValue(item.GetType())) {
+						if (isSimpleValue(item.GetType())) {
 							arrayDef.AddValues(indexCnt, item);
 						} else {
 							arrayDef.AddValues(indexCnt, buildComplexObjectTable(item));
@@ -336,11 +359,11 @@ namespace SQLiteSerialization {
 						object processedValue = dictHolder[key];
 
 						// process the key type
-						if (!IsSimpleValue(key.GetType())) {
+						if (!isSimpleValue(key.GetType())) {
 							processedKey = buildComplexObjectTable(key);
 						}
 						// process the value type
-						if (!IsSimpleValue(processedValue.GetType())) {
+						if (!isSimpleValue(processedValue.GetType())) {
 							processedValue = buildComplexObjectTable(processedValue);
 						}
 
@@ -361,10 +384,12 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Utility Functions
-		protected object createUnintializedObject(Type t) {
+		protected object createUnintializedObject(Type t,int arrayLength=0) {
 			try {
 				if (t.Name == "String")     // strings need specific handling of all the types in C#
 					return "";
+				else if (t.IsArray)
+					return Array.CreateInstance(t.GetElementType(), arrayLength);
 				else
 					return Activator.CreateInstance(t); // give it a chance...
 			} catch {
@@ -373,7 +398,7 @@ namespace SQLiteSerialization {
 			}
 		}
 
-		protected SerializedArray FindArray(int uniqueID) {
+		protected SerializedArray findArray(int uniqueID) {
 			foreach (SerializedArray a in activeArrays) {
 				if (a.UniqueID == uniqueID) {
 					return a;
@@ -388,16 +413,16 @@ namespace SQLiteSerialization {
 			return Attribute.IsDefined(targetType, typeof(SerializableAttribute)) || targetType.IsSerializable || (target is ISerializable);
 		}
 
-		protected bool HasBeenSeenBefore(object targetCheck) {
+		protected bool hasBeenSeenBefore(object targetCheck) {
 			return processedComplexObjects.ContainsKey(targetCheck);
 		}
 
-		protected bool IsSimpleValue(Type type) {
+		protected bool isSimpleValue(Type type) {
 			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
 		}
 
 		// Is there a better word for "Array-like"? I keep going between Enumerable or Array-like. Iterable?
-		protected bool IsArrayLike(Type type) {
+		protected bool isArrayLike(Type type) {
 			Type[] genArgs = type.GetGenericArguments();
 			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
 				return true;
@@ -465,6 +490,7 @@ namespace SQLiteSerialization {
 
 		protected SerializedObjectTableRow readOneTableEntry(int UID,string tablename) {
 			SerializedObjectTableRow entry = new SerializedObjectTableRow(UID, tablename);
+			Regex colTypeStripper = new Regex("^(f_|d_|s_|c_|i_|b_|dt_|fk_)");
 
 			string sql = string.Format("SELECT * FROM {0} WHERE UID={1} LIMIT 1", tablename, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
@@ -475,7 +501,8 @@ namespace SQLiteSerialization {
 					string coltype = colname.Split(new char[] { '_' })[0];
 					object colval = dr.GetValue(ci);
 
-					entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
+					colname = colTypeStripper.Replace(colname,"");		// TODO: Replace Regex dependency with smarter code
+                    entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
                 }
 			}
 			return entry;

@@ -152,5 +152,16 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(sbaType.IsArray);
 			Assert.IsTrue(sbaType.BaseType.FullName == "System.Array");
 		}
+
+		[TestMethod]
+		public void ReflectionArrayAndGenericCastingTest() {
+			int[] test = new int[5] { 1, 2, 3, 4, 5 };		// just to compare
+			int[] target = helperTest<int[]>();
+		}
+
+		private T helperTest<T>() {
+			int[] fromList = new int[5] { 1, 2, 3, 4, 5 };  // return this through a generic
+            return (T)Convert.ChangeType(fromList, typeof(T));
+		}
 	}
 }

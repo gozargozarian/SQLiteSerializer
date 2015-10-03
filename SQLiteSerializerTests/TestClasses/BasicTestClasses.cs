@@ -95,4 +95,27 @@ namespace SQLiteSerializerTests {
 			);
 		}
 	}
+
+	[Serializable]
+	public class SimilarVarClass : IEquatable<SimilarVarClass> {
+		public string AsomeName;
+		public string BsomeName;
+		
+		public SimilarVarClass() { }
+		public void Setup() {
+			AsomeName = "A some name";
+			BsomeName = "B some name";
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as SimilarVarClass)); }
+		public bool Equals(SimilarVarClass other) {
+			return (
+				AsomeName == other.AsomeName
+				&& BsomeName == other.BsomeName
+			);
+		}
+	}
 }

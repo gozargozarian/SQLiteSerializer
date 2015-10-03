@@ -31,6 +31,17 @@ namespace SQLiteSerializerTests {
 		public void ArrayWithinArraySerializationTest() {
 
 		}
+
+		[TestMethod]
+		public void ArrayDifferentArrayTypesTest() {
+			DifferentArrayTypes test = new DifferentArrayTypes();
+			test.Setup();
+
+			MyTestSerializeRun(test);
+
+			DifferentArrayTypes result = MyTestDeserializeRun<DifferentArrayTypes>();
+			Assert.AreEqual(test, result);
+		}
 		#endregion
 
 		#region IList Tests
