@@ -108,7 +108,7 @@ namespace SQLiteSerialization {
 					createdTables.Add(table.TableNameSQL);
 					if (isArrayTable) {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,type INTEGER,typename TEXT,key_type TEXT,value_type TEXT);{1}", ArrayTableName,Environment.NewLine);
-						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ NUMERIC,__value__ NUMERIC,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ NUMERIC,__value__ TEXT,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
 					} else {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
 						sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
@@ -207,36 +207,19 @@ namespace SQLiteSerialization {
 			T container = default(T);
 
             if (typeof(T).IsArray) {
-				List<object> items = new List<object>();
+				List<string> items = new List<string>();
 				Type containerType = typeof(T).GetElementType();
-				//passedArray.GetType().GetElementType();
 
-				Dictionary<object,object> entries = readArrayTableEntries(UID);
-				foreach (KeyValuePair<object,object> pair in entries) {
+				//KeyValuePair<string,string> definition = readArrayTableDefinition(UID);
+				Dictionary<int, string> entries = readArrayTableEntries(UID);
+				foreach (KeyValuePair<int,string> pair in entries) {
 					items.Add(pair.Value);
                 }
 				Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
 				for (int i = 0; i < items.Count; i++) {
-					completeArr.SetValue(Convert.ChangeType(items[i], containerType), i);       // ensure each item is in correct format from SQLite
+					completeArr.SetValue( castRawSQLiteArrayVal(items[i], containerType), i);
 				}
 				container = (T)Convert.ChangeType(completeArr, typeof(T));
-
-				//(T)Convert.ChangeType(completeArr.Cast<int>().ToArray(),typeof(T))
-				// do something even more awful...
-				//Type[] genericArgument = { containerType };
-				//var enumerable = completeArr.GetType().GetMethod("Cast").MakeGenericMethod(genericArgument).Invoke(completeArr,null);
-				//var finalForm = enumerable.GetType().GetMethod("ToArray").Invoke(enumerable,null);
-				//container = (T)Convert.ChangeType(finalForm, typeof(T));
-
-				//container = (T)Convert.ChangeType(cont, typeof(T));
-				
-
-				
-				//container = (T)((object)items.ToArray());
-
-				//container = (T)createUnintializedObject(typeof(T),items.Count);     // kind of unnessecary given below
-				//object[] holder = items.ToArray();
-				//container = (T)Convert.ChangeType(holder,typeof(T));
 			}
 			return container;
 		}
@@ -473,15 +456,65 @@ namespace SQLiteSerialization {
 			return serialTable;
 		}
 
-		protected Dictionary<object, object> readArrayTableEntries(int UID) {
-			Dictionary<object, object> arrayEntries = new Dictionary<object, object>();
+		protected object castRawSQLiteArrayVal(string rawValue,Type targetType) {
+			switch (targetType.FullName.ToLower().Trim().Replace("system.", "")) {
+				case "single":
+				case "float":
+					return float.Parse(rawValue);
+				case "decimal":
+					return decimal.Parse(rawValue);
+				case "double":
+					return double.Parse(rawValue);
+				case "string":
+					return rawValue;
+				case "char":
+					return (char)int.Parse(rawValue);		// I don't know why SQLite insists on storing the value like this, probably my code...
+				case "int":
+				case "int32":
+					return int.Parse(rawValue);
+				case "uint":
+					return uint.Parse(rawValue);
+				case "int16":
+				case "short":
+					return short.Parse(rawValue);
+				case "ushort":
+					return ushort.Parse(rawValue);
+				case "int64":
+					return long.Parse(rawValue);
+				case "byte":
+					return byte.Parse(rawValue);
+				case "sbyte":
+					return sbyte.Parse(rawValue);
+				case "bool":
+				case "boolean":
+					return bool.Parse(rawValue);
+				case "datetime":
+				case "date":
+				case "time":
+					return DateTime.Parse(rawValue);        // not sure what is going to happen here, catch it in a unit test
+				default:
+					return int.Parse(rawValue);
+			}
+		}
+
+		protected KeyValuePair<string,string> readArrayTableDefinition(int UID) {
+			string sql = string.Format("SELECT key_type,value_type FROM {0}_entries WHERE UID = {1} LIMIT 1", ArrayTableName, UID);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+
+			dr.Read();
+			return new KeyValuePair<string, string>(dr["key_type"].ToString(),dr["value_type"].ToString());
+		}
+
+        protected Dictionary<int, string> readArrayTableEntries(int UID) {
+			Dictionary<int, string> arrayEntries = new Dictionary<int, string>();
 			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 
 			while (dr.Read()) {
-				object key = dr["__key__"];
-				object val = dr["__value__"];
+				int key = Convert.ToInt32(dr["__key__"]);
+				string val = dr["__value__"].ToString();
 				arrayEntries.Add(key,val);
 			}
 
