@@ -7,7 +7,7 @@ namespace SQLiteSerialization {
 		public string columnType { get; set; }
 		public object columnValue { get; set; }
 
-		public string columnTypeSQLSafe { get { return columnType.Replace(".","_"); } }
+		public string columnTypeSQLSafe { get { return columnType.Replace(".","_").Split(new char[] { '`' })[0]; } }
         public string sqlName {
 			get {
 				return sqlShortName + columnName;
@@ -120,8 +120,8 @@ namespace SQLiteSerialization {
 
 		public int UniqueID { get { return serializedID; } }
 		public string TableName { get { return tablename; } }
-		public string TableNameSQL { get { return tablename.Replace(".","_"); } }
-		public List<SerializedObjectColumn> Columns { get { return columns; } }
+		public string TableNameSQL { get { return tablename.Replace(".","_").Split(new char[] { '`' })[0]; } }
+        public List<SerializedObjectColumn> Columns { get { return columns; } }
 
 		public SerializedObjectTableRow(int serializedID, string tablename) {
 			this.serializedID = serializedID;

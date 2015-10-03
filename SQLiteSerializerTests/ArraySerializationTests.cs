@@ -60,8 +60,8 @@ namespace SQLiteSerializerTests {
 			cont.Setup();
 			MyTestSerializeRun(cont);
 
-			//SimpleListContainer result = MyTestDeserializeRun<SimpleListContainer>();
-			//Assert.AreEqual(cont, result);
+			SimpleListContainer result = MyTestDeserializeRun<SimpleListContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
