@@ -129,7 +129,10 @@ namespace SQLiteSerialization {
 						if (!firsttime) insertColValue.Append("),"); firsttime = false;
 						insertColValue.AppendFormat("(@v{0},@v{1},@v{2}", UIDParamNo, bindParams.Count,bindParams.Count + 1);
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
-						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
+						if (!isSimpleValue(sarr.ValueType) && (int)item.value == -1)
+							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, null));
+						else
+							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
                 } else {
 					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}", new object[] { table.UniqueID, table.TableNameSQL, Environment.NewLine, SerialInfoTableName });
@@ -145,7 +148,10 @@ namespace SQLiteSerialization {
 
 						insertColDef.AppendFormat(",{0}", col.sqlName);
 						insertColValue.AppendFormat(",@v{0}", bindParams.Count);
-						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
+						if (col.sqlShortName.StartsWith("fk_") && (int)col.columnValue == -1)
+							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, null));
+						else
+							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, col.columnValue));
 
 						// is this a FK linkable?
 						if (doTableCreate && col.sqlName.IndexOf("fk_") == 0) {
@@ -184,7 +190,7 @@ namespace SQLiteSerialization {
 					foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals(field.Name));
                         object val = col.columnValue;
-						if (!isSimpleValue(field.FieldType)) {
+						if (!isSimpleValue(field.FieldType) && val != null) {
 							Type[] genericArgument = { field.FieldType };
 							// do something awful...
 							val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
@@ -228,6 +234,8 @@ namespace SQLiteSerialization {
 		}
 
 		protected int buildComplexObjectTable(object target) {
+			if (target == null) return -1;
+
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (hasBeenSeenBefore(target))
 				return processedComplexObjects[target];     // return the already proc'ed PK
@@ -268,7 +276,7 @@ namespace SQLiteSerialization {
 				table.AddColumn(col);
 
 				// Condition 2: Dictionaries
-			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
+			} /*else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				// make a dict entry
 				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
@@ -282,7 +290,7 @@ namespace SQLiteSerialization {
 				table.AddColumn(col);
 
 				// Condition 4: System Arrays
-			} else if (fieldType.IsArray) {
+			}*/ else if (fieldType.IsArray) {
 				// make a base array entry
 				int FK = buildArrayTable(field.GetValue(parentObj));		// fieldType.FullName - may need this later
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
@@ -325,7 +333,7 @@ namespace SQLiteSerialization {
 					}
 					break;
 
-				case LinearObjectType.IEnumerableFamily:
+				/*case LinearObjectType.IEnumerableFamily:
 					IEnumerable<object> enumHolder = (IEnumerable<object>)target;
 					uint indexCnt = 0;
 					foreach (object item in enumHolder) {
@@ -355,7 +363,7 @@ namespace SQLiteSerialization {
 
 						arrayDef.AddValues(processedKey, processedValue);
 					}
-					break;
+					break;*/
 
 				default:
 					throw new Exception("You fucked up. Go back. Not a recognized array-like object, try serializing as a complex.");
@@ -412,11 +420,11 @@ namespace SQLiteSerialization {
 			Type[] genArgs = type.GetGenericArguments();
 			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
 				return true;
-			} else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
+			} /*else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
 				return true;
 			} else if (genArgs.Length == 2 && type.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				return true;
-			}
+			}*/
 
 			return false;
 		}
