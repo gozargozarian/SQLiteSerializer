@@ -23,10 +23,14 @@ namespace SQLiteSerialization {
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
         protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
 
+		// Serialize vars
 		protected int primaryKeyCount = 0;
 		protected List<SerializedObjectTableRow> activeTables = new List<SerializedObjectTableRow>();		// list of tables in reverse order seen
 		protected List<SerializedArray> activeArrays = new List<SerializedArray>();					// list of arrays in reverse order seen, stored in activeTables as primary source
-		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();	// list of objects with their UIDs in order seen
+		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();   // list of objects with their UIDs in order seen
+
+		// Deserialize vars
+		protected Dictionary<int, string> serialTable;
 
 		#region Main Serialization Functions
 		// clean up all the vars from a previous call
@@ -73,18 +77,9 @@ namespace SQLiteSerialization {
 			if (!isSQLiteReady()) {
 				throw new Exception("The SQLite database could not be made ready for reading.");
 			}
-			Dictionary<int,string> serialTable = readSerialSQLTable();
-			T container = readSQLTableToObject<T>(1,serialTable);
+			serialTable = readSerialSQLTable();
+			T container = readSQLTableToObject<T>(1);
 
-			// TODO: lol!
-			/***
-			// wake up generic types:
-			// construct the generic type in order to walk it
-			Type baseGeneric = typeof(IEnumerable<>);
-			Type[] genericArgument = { arrayDef.ValueType };
-			Type constructed = baseGeneric.MakeGenericType(genericArgument);
-			var enumHolder = Activator.CreateInstance(constructed);
-			***/
 			closeSQLConnection();
 			CleanUp();
 			return container;
@@ -172,7 +167,7 @@ namespace SQLiteSerialization {
 		protected void buildInfoTables() {
 		}
 
-		protected T readSQLTableToObject<T>(int UID,Dictionary<int,string> serialTable) {
+		protected T readSQLTableToObject<T>(int UID) {
 			string tablename = serialTable[UID];
             Type localType = typeof(T);
 
@@ -194,7 +189,7 @@ namespace SQLiteSerialization {
 							// do something awful...
 							val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
 									.MakeGenericMethod(genericArgument)
-									.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)), serialTable });
+									.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)) });
 						}
 						field.SetValue(container, Convert.ChangeType(val, field.FieldType));
 					}
@@ -217,7 +212,15 @@ namespace SQLiteSerialization {
                 }
 				Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
 				for (int i = 0; i < items.Count; i++) {
-					completeArr.SetValue( castRawSQLiteArrayVal(items[i], containerType), i);
+					if (isSimpleValue(containerType))
+						completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
+					else {
+						Type[] genericArgument = { containerType };
+						object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+								.MakeGenericMethod(genericArgument)
+								.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
+						completeArr.SetValue(o,i);
+					}
 				}
 				container = (T)Convert.ChangeType(completeArr, typeof(T));
 			}

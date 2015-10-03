@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace SQLiteSerializerTests {
 	[Serializable]
-	public class SimpleArrayContainer {
+	public class SimpleArrayContainer : IEquatable<SimpleArrayContainer> {
 		public SimpleArrayContainer() { }
 
 		private static int strCount = 20;
@@ -16,10 +16,20 @@ namespace SQLiteSerializerTests {
 				strs[i] = "A string #" + i + " " + appender;
 			}
 		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as SimpleArrayContainer)); }
+		public bool Equals(SimpleArrayContainer other) {
+			return (
+				strs.OrderBy(a => a).SequenceEqual(other.strs.OrderBy(a => a))
+			);
+		}
 	}
 
 	[Serializable]
-	public class ComplexArrayContainer {
+	public class ComplexArrayContainer : IEquatable<ComplexArrayContainer> {
 		public ComplexArrayContainer() { }
 
 		private static int objCount = 20;
@@ -31,10 +41,20 @@ namespace SQLiteSerializerTests {
 				objs[i].Setup(" of object #" + i);
 			}
 		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as ComplexArrayContainer)); }
+		public bool Equals(ComplexArrayContainer other) {
+			return (
+				objs.OrderBy(a => a).SequenceEqual(other.objs.OrderBy(a => a))
+			);
+		}
 	}
 
 	[Serializable]
-	public class SimpleListContainer {
+	public class SimpleListContainer : IEquatable<SimpleListContainer> {
 		public SimpleListContainer() { }
 
 		private static int strCount = 20;
@@ -45,10 +65,20 @@ namespace SQLiteSerializerTests {
 				strs.Add("A string #" + i + " " + appender);
 			}
 		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as SimpleListContainer)); }
+		public bool Equals(SimpleListContainer other) {
+			return (
+				strs.OrderBy(a => a).SequenceEqual(other.strs.OrderBy(a => a))
+			);
+		}
 	}
 
 	[Serializable]
-	public class ComplexListContainer {
+	public class ComplexListContainer : IEquatable<ComplexListContainer> {
 		public ComplexListContainer() { }
 
 		private static int objCount = 20;
@@ -61,10 +91,20 @@ namespace SQLiteSerializerTests {
 				objs.Add(s);
 			}
 		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as ComplexListContainer)); }
+		public bool Equals(ComplexListContainer other) {
+			return (
+				objs.OrderBy(a => a).SequenceEqual(other.objs.OrderBy(a => a))
+			);
+		}
 	}
 
 	[Serializable]
-	public class SimpleDictionaryContainer {
+	public class SimpleDictionaryContainer : IEquatable<SimpleDictionaryContainer> {
 		public SimpleDictionaryContainer() { }
 
 		private static int strCount = 20;
@@ -75,10 +115,20 @@ namespace SQLiteSerializerTests {
 				strs.Add(prepender + "A string #" + i, i);
 			}
 		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as SimpleDictionaryContainer)); }
+		public bool Equals(SimpleDictionaryContainer other) {
+			return (
+				strs.ContentEquals(other.strs)
+			);
+		}
 	}
 
 	[Serializable]
-	public class ComplexDictionaryContainer {
+	public class ComplexDictionaryContainer : IEquatable<ComplexDictionaryContainer> {
 		public ComplexDictionaryContainer() { }
 
 		private static int objCount = 20;
@@ -92,6 +142,16 @@ namespace SQLiteSerializerTests {
 				v.Setup(string.Format("Dict #{0} VALUE:", i));
 				objs.Add(k, v);
 			}
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as ComplexDictionaryContainer)); }
+		public bool Equals(ComplexDictionaryContainer other) {
+			return (
+				objs.ContentEquals(other.objs)
+			);
 		}
 	}
 
@@ -145,6 +205,15 @@ namespace SQLiteSerializerTests {
 				&& arrChars.OrderBy(a => a).SequenceEqual(other.arrChars.OrderBy(a => a))
 				&& arrDates.OrderBy(a => a).SequenceEqual(other.arrDates.OrderBy(a => a))
 			);
+		}
+	}
+
+	public static class DictionaryExtensionMethods {
+		public static bool ContentEquals<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, Dictionary<TKey, TValue> otherDictionary) {
+			return (otherDictionary ?? new Dictionary<TKey, TValue>())
+				.OrderBy(kvp => kvp.Key)
+				.SequenceEqual((dictionary ?? new Dictionary<TKey, TValue>())
+								   .OrderBy(kvp => kvp.Key));
 		}
 	}
 }

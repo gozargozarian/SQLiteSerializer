@@ -11,13 +11,19 @@ namespace SQLiteSerializerTests {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
-		}
+
+			SimpleArrayContainer result = MyTestDeserializeRun<SimpleArrayContainer>();
+			Assert.AreEqual(cont,result);
+        }
 
 		[TestMethod]
 		public void ArrayOfObjectsSerializationTest() {
 			ComplexArrayContainer cont = new ComplexArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
+
+			ComplexArrayContainer result = MyTestDeserializeRun<ComplexArrayContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -25,6 +31,9 @@ namespace SQLiteSerializerTests {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
+
+			SimpleArrayContainer result = MyTestDeserializeRun<SimpleArrayContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -50,6 +59,9 @@ namespace SQLiteSerializerTests {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
+
+			SimpleListContainer result = MyTestDeserializeRun<SimpleListContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -57,6 +69,9 @@ namespace SQLiteSerializerTests {
 			ComplexListContainer cont = new ComplexListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
+
+			ComplexListContainer result = MyTestDeserializeRun<ComplexListContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -64,6 +79,9 @@ namespace SQLiteSerializerTests {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
+
+			SimpleListContainer result = MyTestDeserializeRun<SimpleListContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -78,6 +96,9 @@ namespace SQLiteSerializerTests {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
+
+			SimpleDictionaryContainer result = MyTestDeserializeRun<SimpleDictionaryContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
@@ -85,6 +106,9 @@ namespace SQLiteSerializerTests {
 			ComplexDictionaryContainer cont = new ComplexDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
+
+			ComplexDictionaryContainer result = MyTestDeserializeRun<ComplexDictionaryContainer>();
+			Assert.AreEqual(cont, result);
 		}
 		[TestMethod]
 		public void DictionaryOfObjectsKeysOfObjectsSerializationTest() {
@@ -96,6 +120,9 @@ namespace SQLiteSerializerTests {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
+
+			SimpleDictionaryContainer result = MyTestDeserializeRun<SimpleDictionaryContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]
