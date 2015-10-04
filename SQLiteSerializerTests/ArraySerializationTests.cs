@@ -112,9 +112,15 @@ namespace SQLiteSerializerTests {
 			ComplexDictionaryContainer result = MyTestDeserializeRun<ComplexDictionaryContainer>();
 			Assert.AreEqual(cont, result);
 		}
+
 		[TestMethod]
 		public void DictionaryOfObjectsKeysOfObjectsSerializationTest() {
+			VeryComplexDictionaryContainer cont = new VeryComplexDictionaryContainer();
+			cont.Setup();
+			MyTestSerializeRun(cont);
 
+			VeryComplexDictionaryContainer result = MyTestDeserializeRun<VeryComplexDictionaryContainer>();
+			Assert.AreEqual(cont, result);
 		}
 
 		[TestMethod]

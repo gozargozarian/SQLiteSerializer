@@ -141,6 +141,33 @@ namespace SQLiteSerializerTests {
 		public ComplexDictionaryContainer() { }
 
 		private static int objCount = 20;
+		public Dictionary<string, SimpleDictionaryContainer> objs;
+		public void Setup() {
+			objs = new Dictionary<string, SimpleDictionaryContainer>(objCount);
+			for (uint i = 0; i < objCount; i++) {
+				var k = string.Format("Dict #{0} KEY:", i);
+				var v = new SimpleDictionaryContainer();
+				v.Setup(string.Format("Dict #{0} VALUE:", i));
+				objs.Add(k, v);
+			}
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as ComplexDictionaryContainer)); }
+		public bool Equals(ComplexDictionaryContainer other) {
+			return (
+				objs.ContentEquals(other.objs)
+			);
+		}
+	}
+
+	[Serializable]
+	public class VeryComplexDictionaryContainer : IEquatable<VeryComplexDictionaryContainer> {
+		public VeryComplexDictionaryContainer() { }
+
+		private static int objCount = 20;
 		public Dictionary<SimpleListContainer, SimpleDictionaryContainer> objs;
 		public void Setup() {
 			objs = new Dictionary<SimpleListContainer, SimpleDictionaryContainer>(objCount);
@@ -156,8 +183,8 @@ namespace SQLiteSerializerTests {
 		public override int GetHashCode() {
 			return base.GetHashCode();
 		}
-		public override bool Equals(object other) { return Equals((other as ComplexDictionaryContainer)); }
-		public bool Equals(ComplexDictionaryContainer other) {
+		public override bool Equals(object other) { return Equals((other as VeryComplexDictionaryContainer)); }
+		public bool Equals(VeryComplexDictionaryContainer other) {
 			return (
 				objs.ContentEquals(other.objs)
 			);
