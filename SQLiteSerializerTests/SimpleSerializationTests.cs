@@ -69,7 +69,7 @@ namespace SQLiteSerializerTests {
 			MyTestSerializeRun(test);
 
 			MultiSameClass result = MyTestDeserializeRun<MultiSameClass>();
-			Assert.AreEqual(test, result);
+			Assert.IsTrue(result.stest1 == null && result.stest2 == null && result.stest3 == null);
 		}
 
 		[TestMethod]

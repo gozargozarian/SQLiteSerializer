@@ -164,7 +164,7 @@ namespace SQLiteSerialization {
 				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}{2}",insertColDef,insertColValue, Environment.NewLine);
             }
 
-			sqlDataRegion.Append("VACUUM");		// not sure if this is really needed when we are only doing one write
+			//sqlDataRegion.Append("VACUUM");		// not sure if this is really needed when we are only doing one write
 			return bindParams;
 		}
 		#endregion
@@ -276,7 +276,7 @@ namespace SQLiteSerialization {
 				table.AddColumn(col);
 
 				// Condition 2: Dictionaries
-			} /*else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
+			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				// make a dict entry
 				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
@@ -290,7 +290,7 @@ namespace SQLiteSerialization {
 				table.AddColumn(col);
 
 				// Condition 4: System Arrays
-			}*/ else if (fieldType.IsArray) {
+			} else if (fieldType.IsArray) {
 				// make a base array entry
 				int FK = buildArrayTable(field.GetValue(parentObj));		// fieldType.FullName - may need this later
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
@@ -333,7 +333,7 @@ namespace SQLiteSerialization {
 					}
 					break;
 
-				/*case LinearObjectType.IEnumerableFamily:
+				case LinearObjectType.IEnumerableFamily:
 					IEnumerable<object> enumHolder = (IEnumerable<object>)target;
 					uint indexCnt = 0;
 					foreach (object item in enumHolder) {
@@ -363,7 +363,7 @@ namespace SQLiteSerialization {
 
 						arrayDef.AddValues(processedKey, processedValue);
 					}
-					break;*/
+					break;
 
 				default:
 					throw new Exception("You fucked up. Go back. Not a recognized array-like object, try serializing as a complex.");
@@ -420,11 +420,11 @@ namespace SQLiteSerialization {
 			Type[] genArgs = type.GetGenericArguments();
 			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
 				return true;
-			} /*else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
+			} else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
 				return true;
 			} else if (genArgs.Length == 2 && type.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				return true;
-			}*/
+			}
 
 			return false;
 		}
@@ -525,7 +525,11 @@ namespace SQLiteSerialization {
 
 			while (dr.Read()) {
 				int key = Convert.ToInt32(dr["__key__"]);
-				string val = dr["__value__"].ToString();
+				string val;
+				if (dr.IsDBNull(dr.GetOrdinal("__value__")))
+					val = null;
+				else
+					val = dr["__value__"].ToString();
 				arrayEntries.Add(key,val);
 			}
 
@@ -543,7 +547,11 @@ namespace SQLiteSerialization {
 				for (int ci=0; ci<dr.FieldCount; ci++) {
 					string colname = dr.GetName(ci);
 					string coltype = colname.Split(new char[] { '_' })[0];
-					object colval = dr.GetValue(ci);
+					object colval;
+					if (dr.IsDBNull(ci))
+						colval = null;
+					else
+						colval = dr.GetValue(ci);
 
 					colname = colTypeStripper.Replace(colname,"");		// TODO: Replace Regex dependency with smarter code
                     entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));

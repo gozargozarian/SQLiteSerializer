@@ -5,8 +5,8 @@ using System.Linq;
 
 namespace SQLiteSerializerTests {
 	[Serializable]
-	public class SimpleArrayContainer : IEquatable<SimpleArrayContainer> {
-		public SimpleArrayContainer() { }
+	public class SimpleArrayContainer : IEquatable<SimpleArrayContainer>,IComparable<SimpleArrayContainer> {
+        public SimpleArrayContainer() { }
 
 		private static int strCount = 20;
 		public string[] strs;
@@ -25,6 +25,9 @@ namespace SQLiteSerializerTests {
 			return (
 				strs.OrderBy(a => a).SequenceEqual(other.strs.OrderBy(a => a))
 			);
+		}
+		public int CompareTo(SimpleArrayContainer other) {
+			return 0;
 		}
 	}
 
@@ -54,7 +57,7 @@ namespace SQLiteSerializerTests {
 	}
 
 	[Serializable]
-	public class SimpleListContainer : IEquatable<SimpleListContainer> {
+	public class SimpleListContainer : IEquatable<SimpleListContainer>,IComparable<SimpleListContainer> {
 		public SimpleListContainer() { }
 
 		private static int strCount = 20;
@@ -74,6 +77,9 @@ namespace SQLiteSerializerTests {
 			return (
 				strs.OrderBy(a => a).SequenceEqual(other.strs.OrderBy(a => a))
 			);
+		}
+		public int CompareTo(SimpleListContainer other) {
+			return 0;
 		}
 	}
 
@@ -104,7 +110,7 @@ namespace SQLiteSerializerTests {
 	}
 
 	[Serializable]
-	public class SimpleDictionaryContainer : IEquatable<SimpleDictionaryContainer> {
+	public class SimpleDictionaryContainer : IEquatable<SimpleDictionaryContainer>,IComparable<SimpleDictionaryContainer> {
 		public SimpleDictionaryContainer() { }
 
 		private static int strCount = 20;
@@ -124,6 +130,9 @@ namespace SQLiteSerializerTests {
 			return (
 				strs.ContentEquals(other.strs)
 			);
+		}
+		public int CompareTo(SimpleDictionaryContainer other) {
+			return 0;
 		}
 	}
 

@@ -48,7 +48,7 @@ namespace SQLiteSerialization {
 				serializeHandling = LinearObjectType.SystemArray;       // your basic array
 				keyType = typeof(uint);
 				valueType = arraylikeType.GetElementType();
-            }/* else if (genArgs.Length == 1 && arraylikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !arraylikeType.IsArray) {
+            } else if (genArgs.Length == 1 && arraylikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !arraylikeType.IsArray) {
 				//.IsAssignableFrom(typeof(IEnumerable<>))
 				serializeHandling = LinearObjectType.IEnumerableFamily;
 				keyType = typeof(uint);
@@ -58,7 +58,7 @@ namespace SQLiteSerialization {
 				serializeHandling = LinearObjectType.IDictionaryFamily;
 				keyType = genArgs[0];
 				valueType = genArgs[1];
-			}*/ else { throw new Exception("Constructing SerializedEnumerable: Array-like object cannot be handled by this serializer: Type " + typename); }
+			} else { throw new Exception("Constructing SerializedEnumerable: Array-like object cannot be handled by this serializer: Type " + typename); }
 		}
 
 		public void AddValues(object keyValue, object valueValue) {
