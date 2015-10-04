@@ -103,7 +103,7 @@ namespace SQLiteSerialization {
 					createdTables.Add(table.TableNameSQL);
 					if (isArrayTable) {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,type INTEGER,typename TEXT,key_type TEXT,value_type TEXT);{1}", ArrayTableName,Environment.NewLine);
-						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ TEXT,__value__ TEXT,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(PK INTEGER PRIMARY KEY,UID INTEGER,__key__ TEXT,__value__ TEXT,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
 					} else {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
 						sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
@@ -120,8 +120,8 @@ namespace SQLiteSerialization {
                     bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, (int)sarr.ArrayType));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.TypeName));
-					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.KeyType.FullName));
-					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.ValueType.FullName));
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.KeyType.AssemblyQualifiedName));   // .FullName
+					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.ValueType.AssemblyQualifiedName));
 					insertColDef.AppendFormat("INSERT INTO {0}_entries(UID,__key__,__value__", ArrayTableName);
 
 					bool firsttime = true;
@@ -243,26 +243,27 @@ namespace SQLiteSerialization {
 						foreach (KeyValuePair<int, string> pair in entries) {
 							items.Add(pair.Value);
 						}
-						List<object> completeArr = new List<object>();
+						object completeArr = Activator.CreateInstance(typeof(T));
 						for (int i = 0; i < items.Count; i++) {
 							if (isSimpleValue(containerType))
-								completeArr.Insert(i,castRawSQLiteArrayVal(items[i], containerType));
+								((IList)completeArr).Insert(i,castRawSQLiteArrayVal(items[i], containerType));
 							else {
 								Type[] genericArgument = { containerType };
 								object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
 										.MakeGenericMethod(genericArgument)
 										.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
-								completeArr.Insert(i,o);
+								((IList)completeArr).Insert(i,o);
 							}
 						}
-						container = (T)Convert.ChangeType(completeArr, typeof(T));
+						container = (T)completeArr;
 					}
 					break;
 
 				case LinearObjectType.IDictionaryFamily:
 					{
-						Dictionary<object, object> completeArr = new Dictionary<object, object>();
-                        Type keyType = definition.keyTypeName;
+						object completeArr = Activator.CreateInstance(typeof(T));
+
+						Type keyType = definition.keyTypeName;
 						Type containerType = definition.valueTypeName;
 
 						Dictionary<string, string> entries = readComplexArrayTableEntries(UID);
@@ -285,9 +286,9 @@ namespace SQLiteSerialization {
 										.MakeGenericMethod(genericArgument)
 										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Value, containerType) });
 							}
-							completeArr.Add(keyHolder,valueHolder);
+							((IDictionary)completeArr).Add(keyHolder,valueHolder);
 						}
-						container = (T)Convert.ChangeType(completeArr, typeof(T));
+						container = (T)completeArr;
 					}
 					break;
 			}
@@ -530,44 +531,52 @@ namespace SQLiteSerialization {
 		}
 
 		protected object castRawSQLiteArrayVal(string rawValue,Type targetType) {
-			switch (targetType.FullName.ToLower().Trim().Replace("system.", "")) {
-				case "single":
-				case "float":
-					return float.Parse(rawValue);
-				case "decimal":
-					return decimal.Parse(rawValue);
-				case "double":
-					return double.Parse(rawValue);
-				case "string":
-					return rawValue;
-				case "char":
-					return (char)int.Parse(rawValue);		// I don't know why SQLite insists on storing the value like this, probably my code...
-				case "int":
-				case "int32":
-					return int.Parse(rawValue);
-				case "uint":
-					return uint.Parse(rawValue);
-				case "int16":
-				case "short":
-					return short.Parse(rawValue);
-				case "ushort":
-					return ushort.Parse(rawValue);
-				case "int64":
-					return long.Parse(rawValue);
-				case "byte":
-					return byte.Parse(rawValue);
-				case "sbyte":
-					return sbyte.Parse(rawValue);
-				case "bool":
-				case "boolean":
-					return bool.Parse(rawValue);
-				case "datetime":
-				case "date":
-				case "time":
-					return DateTime.Parse(rawValue);        // not sure what is going to happen here, catch it in a unit test
-				default:
-					return int.Parse(rawValue);
-			}
+			if (isSimpleValue(targetType)) {
+				switch (targetType.FullName.ToLower().Trim().Replace("system.", "")) {
+					case "single":
+					case "float":
+						return float.Parse(rawValue);
+					case "decimal":
+						return decimal.Parse(rawValue);
+					case "double":
+						return double.Parse(rawValue);
+					case "string":
+						return rawValue;
+					case "char":
+						return (char)int.Parse(rawValue);       // I don't know why SQLite insists on storing the value like this, probably my code...
+					case "int16":
+					case "short":
+						return short.Parse(rawValue);
+					case "uint16":
+					case "ushort":
+						return ushort.Parse(rawValue);
+					case "int32":
+					case "int":
+						return int.Parse(rawValue);
+					case "uint32":
+					case "uint":
+						return uint.Parse(rawValue);
+					case "int64":
+					case "long":
+						return long.Parse(rawValue);
+					case "uint64":
+					case "ulong":
+						return ulong.Parse(rawValue);
+					case "byte":
+						return byte.Parse(rawValue);
+					case "sbyte":
+						return sbyte.Parse(rawValue);
+					case "bool":
+					case "boolean":
+						return bool.Parse(rawValue);
+					case "datetime":
+					case "date":
+					case "time":
+						return DateTime.Parse(rawValue);        // not sure what is going to happen here, catch it in a unit test
+					default:
+						return int.Parse(rawValue);             // this.... should never happen and something bad caused this
+				}
+			} else { return Convert.ChangeType(rawValue, typeof(int)); }
 		}
 
 		protected ArrayStorageDefinition readArrayTableDefinition(int UID) {
@@ -587,7 +596,7 @@ namespace SQLiteSerialization {
 
         protected Dictionary<int, string> readStdArrayTableEntries(int UID) {
 			Dictionary<int, string> arrayEntries = new Dictionary<int, string>();
-			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
+			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY PK", ArrayTableName, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 
@@ -606,7 +615,7 @@ namespace SQLiteSerialization {
 
 		protected Dictionary<string,string> readComplexArrayTableEntries(int UID) {
 			Dictionary<string, string> arrayEntries = new Dictionary<string, string>();
-			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
+			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY PK", ArrayTableName, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 

@@ -16,10 +16,10 @@ namespace SQLiteSerialization {
 		public string sqlShortName {
 			get {
 				switch (columnType.ToLower().Trim().Replace("system.","")) {
+					case "single":
 					case "float":
 						return "f_";
 					case "decimal":
-					case "single":
 					case "double":
 					case "quad":    // lol, for those 128-bit processors out there
 						return "d_";
@@ -29,12 +29,17 @@ namespace SQLiteSerialization {
 						return "c_";
 					case "int":
 					case "uint":
+					case "ulong":
+					case "long":
 					case "int2":
 					case "int4":
 					case "int8":
 					case "int16":
+					case "uint16":
 					case "int32":
+					case "uint32":
 					case "int64":
+					case "uint64":
 					case "short":
 					case "ushort":
 					case "byte":
@@ -71,8 +76,13 @@ namespace SQLiteSerialization {
 					case "int4":
 					case "int8":
 					case "int16":
+					case "uint16":
 					case "int32":
+					case "uint32":
+					case "long":
+					case "ulong":
 					case "int64":
+					case "uint64":
 					case "short":
 					case "ushort":
 					case "byte":
