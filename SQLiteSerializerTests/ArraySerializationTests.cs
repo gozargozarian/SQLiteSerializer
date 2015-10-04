@@ -123,8 +123,8 @@ namespace SQLiteSerializerTests {
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
 
-			//Dictionary<string,uint> result = MyTestDeserializeRun<Dictionary<string, uint>>();
-			//Assert.IsTrue(result.ContentEquals(cont.strs));
+			Dictionary<string,uint> result = MyTestDeserializeRun<Dictionary<string, uint>>();
+			Assert.IsTrue(result.ContentEquals(cont.strs));
 		}
 
 		[TestMethod]

@@ -103,7 +103,7 @@ namespace SQLiteSerialization {
 					createdTables.Add(table.TableNameSQL);
 					if (isArrayTable) {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,type INTEGER,typename TEXT,key_type TEXT,value_type TEXT);{1}", ArrayTableName,Environment.NewLine);
-						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ NUMERIC,__value__ TEXT,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
+						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}_entries(UID INTEGER,__key__ TEXT,__value__ TEXT,FOREIGN KEY(UID) REFERENCES {0}(UID));{1}{1}", ArrayTableName,Environment.NewLine);
 					} else {
 						sqlDefinitionRegion.AppendFormat("CREATE TABLE {0}", table.TableNameSQL);
 						sqlDefinitionRegion.Append("(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE");
@@ -207,29 +207,91 @@ namespace SQLiteSerialization {
 		protected T readAllArrayEntries<T>(int UID) {
 			T container = default(T);
 
-            if (typeof(T).IsArray) {
-				List<string> items = new List<string>();
-				Type containerType = typeof(T).GetElementType();
+			ArrayStorageDefinition definition = readArrayTableDefinition(UID);
+			switch (definition.type) {
+				case LinearObjectType.SystemArray:      //typeof(T).IsArray
+					{
+						List<string> items = new List<string>();
+						Type containerType = typeof(T).GetElementType();
 
-				//KeyValuePair<string,string> definition = readArrayTableDefinition(UID);
-				Dictionary<int, string> entries = readArrayTableEntries(UID);
-				foreach (KeyValuePair<int,string> pair in entries) {
-					items.Add(pair.Value);
-                }
-				Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
-				for (int i = 0; i < items.Count; i++) {
-					if (isSimpleValue(containerType))
-						completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
-					else {
-						Type[] genericArgument = { containerType };
-						object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-								.MakeGenericMethod(genericArgument)
-								.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
-						completeArr.SetValue(o,i);
+						Dictionary<int, string> entries = readStdArrayTableEntries(UID);
+						foreach (KeyValuePair<int, string> pair in entries) {
+							items.Add(pair.Value);
+						}
+						Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
+						for (int i = 0; i < items.Count; i++) {
+							if (isSimpleValue(containerType))
+								completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
+							else {
+								Type[] genericArgument = { containerType };
+								object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+										.MakeGenericMethod(genericArgument)
+										.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
+								completeArr.SetValue(o, i);
+							}
+						}
+						container = (T)Convert.ChangeType(completeArr, typeof(T));
 					}
-				}
-				container = (T)Convert.ChangeType(completeArr, typeof(T));
+					break;
+
+				case LinearObjectType.IEnumerableFamily:
+					{
+						List<string> items = new List<string>();
+						Type containerType = definition.valueTypeName;
+
+						Dictionary<int, string> entries = readStdArrayTableEntries(UID);
+						foreach (KeyValuePair<int, string> pair in entries) {
+							items.Add(pair.Value);
+						}
+						List<object> completeArr = new List<object>();
+						for (int i = 0; i < items.Count; i++) {
+							if (isSimpleValue(containerType))
+								completeArr.Insert(i,castRawSQLiteArrayVal(items[i], containerType));
+							else {
+								Type[] genericArgument = { containerType };
+								object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+										.MakeGenericMethod(genericArgument)
+										.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
+								completeArr.Insert(i,o);
+							}
+						}
+						container = (T)Convert.ChangeType(completeArr, typeof(T));
+					}
+					break;
+
+				case LinearObjectType.IDictionaryFamily:
+					{
+						Dictionary<object, object> completeArr = new Dictionary<object, object>();
+                        Type keyType = definition.keyTypeName;
+						Type containerType = definition.valueTypeName;
+
+						Dictionary<string, string> entries = readComplexArrayTableEntries(UID);
+						foreach (KeyValuePair<string, string> pair in entries) {
+							object keyHolder;
+							if (isSimpleValue(keyType))
+								keyHolder = castRawSQLiteArrayVal(pair.Key, keyType);
+							else {
+								Type[] genericArgument = { containerType };
+								keyHolder = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+										.MakeGenericMethod(genericArgument)
+										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Key, keyType) });
+							}
+							object valueHolder;
+							if (isSimpleValue(containerType))
+								valueHolder = castRawSQLiteArrayVal(pair.Value, containerType);
+							else {
+								Type[] genericArgument = { containerType };
+								valueHolder = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+										.MakeGenericMethod(genericArgument)
+										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Value, containerType) });
+							}
+							completeArr.Add(keyHolder,valueHolder);
+						}
+						container = (T)Convert.ChangeType(completeArr, typeof(T));
+					}
+					break;
 			}
+			
 			return container;
 		}
 
@@ -508,16 +570,22 @@ namespace SQLiteSerialization {
 			}
 		}
 
-		protected KeyValuePair<string,string> readArrayTableDefinition(int UID) {
-			string sql = string.Format("SELECT key_type,value_type FROM {0}_entries WHERE UID = {1} LIMIT 1", ArrayTableName, UID);
+		protected ArrayStorageDefinition readArrayTableDefinition(int UID) {
+			string sql = string.Format("SELECT type,typename,key_type,value_type FROM {0} WHERE UID = {1} LIMIT 1", ArrayTableName, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 
 			dr.Read();
-			return new KeyValuePair<string, string>(dr["key_type"].ToString(),dr["value_type"].ToString());
+			ArrayStorageDefinition def = new ArrayStorageDefinition();
+			def.type = (LinearObjectType)Convert.ToInt32(dr["type"]);
+            def.linearObjectTypeName = Type.GetType(dr["typename"].ToString());
+			def.keyTypeName = Type.GetType(dr["key_type"].ToString());
+			def.valueTypeName = Type.GetType(dr["value_type"].ToString());
+
+			return def;
 		}
 
-        protected Dictionary<int, string> readArrayTableEntries(int UID) {
+        protected Dictionary<int, string> readStdArrayTableEntries(int UID) {
 			Dictionary<int, string> arrayEntries = new Dictionary<int, string>();
 			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
@@ -531,6 +599,25 @@ namespace SQLiteSerialization {
 				else
 					val = dr["__value__"].ToString();
 				arrayEntries.Add(key,val);
+			}
+
+			return arrayEntries;
+		}
+
+		protected Dictionary<string,string> readComplexArrayTableEntries(int UID) {
+			Dictionary<string, string> arrayEntries = new Dictionary<string, string>();
+			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY __key__", ArrayTableName, UID);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+
+			while (dr.Read()) {
+				string key = dr["__key__"].ToString();		// if you have null keys, I'm personally going to hunt you down and make you watch old Olsen twin movies
+				string val;
+				if (dr.IsDBNull(dr.GetOrdinal("__value__")))
+					val = null;
+				else
+					val = dr["__value__"].ToString();
+				arrayEntries.Add(key, val);
 			}
 
 			return arrayEntries;

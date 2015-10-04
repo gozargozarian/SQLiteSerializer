@@ -2,6 +2,13 @@
 using System.Collections.Generic;
 
 namespace SQLiteSerialization {
+	public struct ArrayStorageDefinition {
+		public LinearObjectType type;
+		public Type linearObjectTypeName;
+		public Type keyTypeName;
+		public Type valueTypeName;
+	}
+
 	public enum LinearObjectType : int {
 		None = 0,
 		SystemArray,
