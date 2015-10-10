@@ -75,6 +75,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="GenericSerializationTests.cs" />
     <Compile Include="ArraySerializationTests.cs" />
     <Compile Include="BaseTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -82,6 +83,7 @@
     <Compile Include="SimpleSerializationTests.cs" />
     <Compile Include="TestClasses\ArrayLikeTestClasses.cs" />
     <Compile Include="TestClasses\BasicTestClasses.cs" />
+    <Compile Include="TestClasses\GenericsTestClasses.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SQLiteSerializer\SQLiteSerializer.csproj">

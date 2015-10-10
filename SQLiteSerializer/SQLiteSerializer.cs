@@ -78,7 +78,7 @@ namespace SQLiteSerialization {
 				throw new Exception("The SQLite database could not be made ready for reading.");
 			}
 			serialTable = readSerialSQLTable();
-			T container = readSQLTableToObject<T>(1);
+			T container = readSQLTableToObject<T>();
 
 			closeSQLConnection();
 			CleanUp();
@@ -173,7 +173,7 @@ namespace SQLiteSerialization {
 		protected void buildInfoTables() {
 		}
 
-		protected T readSQLTableToObject<T>(int UID) {
+		protected T readSQLTableToObject<T>(int UID=1) {
 			string tablename = serialTable[UID];
             Type localType = typeof(T);
 
@@ -272,7 +272,7 @@ namespace SQLiteSerialization {
 							if (isSimpleValue(keyType))
 								keyHolder = castRawSQLiteArrayVal(pair.Key, keyType);
 							else {
-								Type[] genericArgument = { containerType };
+								Type[] genericArgument = { keyType };
 								keyHolder = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
 										.MakeGenericMethod(genericArgument)
 										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Key, keyType) });

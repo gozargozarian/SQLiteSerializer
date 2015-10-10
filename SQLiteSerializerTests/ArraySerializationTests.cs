@@ -9,7 +9,7 @@ namespace SQLiteSerializerTests {
 
 		#region System.Array Tests
 		[TestMethod]
-		public void ArraySerializationTest() {
+		public void ArrayBasicSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -110,6 +110,16 @@ namespace SQLiteSerializerTests {
 			MyTestSerializeRun(cont);
 
 			ComplexDictionaryContainer result = MyTestDeserializeRun<ComplexDictionaryContainer>();
+			Assert.AreEqual(cont, result);
+		}
+
+		[TestMethod]
+		public void DictionaryOfArrayKeysSerializationTest() {
+			ArrayKeyDictionaryContainer cont = new ArrayKeyDictionaryContainer();
+			cont.Setup();
+			MyTestSerializeRun(cont);
+
+			ArrayKeyDictionaryContainer result = MyTestDeserializeRun<ArrayKeyDictionaryContainer>();
 			Assert.AreEqual(cont, result);
 		}
 

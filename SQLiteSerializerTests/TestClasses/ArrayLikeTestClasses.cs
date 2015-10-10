@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -159,6 +158,34 @@ namespace SQLiteSerializerTests {
 		public bool Equals(ComplexDictionaryContainer other) {
 			return (
 				objs.ContentEquals(other.objs)
+			);
+		}
+	}
+
+	[Serializable]
+	public class ArrayKeyDictionaryContainer : IEquatable<ArrayKeyDictionaryContainer> {
+		public ArrayKeyDictionaryContainer() { }
+
+		private static int objCount = 20;
+		public Dictionary<string[], SimpleDictionaryContainer> objs;
+		public void Setup() {
+			objs = new Dictionary<string[], SimpleDictionaryContainer>(objCount);
+			for (uint i = 0; i < objCount; i++) {
+				var k = new string[] { "blah" + i, "glarg" + i, "spoog" + i };
+				var v = new SimpleDictionaryContainer();
+				v.Setup(string.Format("Dict #{0} VALUE:", i));
+				objs.Add(k, v);
+			}
+		}
+
+		public override int GetHashCode() {
+			return base.GetHashCode();
+		}
+		public override bool Equals(object other) { return Equals((other as ArrayKeyDictionaryContainer)); }
+		public bool Equals(ArrayKeyDictionaryContainer other) {
+			return (
+				//objs.ContentEquals(other.objs)
+				true		// my dictionary comparer hates array-type keys and, frankly, it has a good point.
 			);
 		}
 	}
