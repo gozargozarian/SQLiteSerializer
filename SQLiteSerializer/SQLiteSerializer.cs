@@ -13,8 +13,6 @@ using System.IO;
 using System.Collections;
 
 namespace SQLiteSerialization {
-	// TODO: Currently has limitations with processing types that have Generic Arguments with Parameter Constraints
-	// TODO: Pure reference values (simple values that were passed by reference) are duplicated when they are deserialized
 	public class SQLiteSerializer {
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
@@ -25,9 +23,9 @@ namespace SQLiteSerialization {
 
 		// Serialize vars
 		protected int primaryKeyCount = 0;
-		protected List<SerializedObjectTableRow> activeTables = new List<SerializedObjectTableRow>();		// list of tables in reverse order seen
-		protected List<SerializedArray> activeArrays = new List<SerializedArray>();					// list of arrays in reverse order seen, stored in activeTables as primary source
-		protected Dictionary<object,int> processedComplexObjects = new Dictionary<object, int>();   // list of objects with their UIDs in order seen
+		protected List<SerializedObjectTableRow> activeTables = new List<SerializedObjectTableRow>(0);		// list of tables in reverse order seen
+		protected List<SerializedArray> activeArrays = new List<SerializedArray>(0);						// list of arrays in reverse order seen, stored in activeTables as primary source
+		protected Dictionary<object,int> serializedObjects = new Dictionary<object,int>(0);			// list of objects with their UIDs in order seen
 
 		// Deserialize vars
 		protected Dictionary<int, string> serialTable;
@@ -39,10 +37,12 @@ namespace SQLiteSerialization {
 			sqlDefinitionRegion = new StringBuilder();
 			sqlDataRegion = new StringBuilder();
 			primaryKeyCount = 0;
-			activeTables = new List<SerializedObjectTableRow>();
-			activeArrays = new List<SerializedArray>();
-			processedComplexObjects = new Dictionary<object, int>();
-		}
+			activeTables = new List<SerializedObjectTableRow>(0);
+			activeArrays = new List<SerializedArray>(0);
+			serializedObjects = new Dictionary<object,int>(0);
+
+			serialTable = new Dictionary<int, string>(0);
+        }
 
 		public void Serialize(object target, string databaseConnectionString, bool autoDeleteExistingFile=true) {
 			if (File.Exists(databaseConnectionString.Replace("data source","").Replace("=","").Trim())) {   // TODO: this sucks, do something better later
@@ -301,16 +301,16 @@ namespace SQLiteSerialization {
 
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (hasBeenSeenBefore(target))
-				return processedComplexObjects[target];     // return the already proc'ed PK
+				return serializedObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
-			if (!canSerialize(target))
-				throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
+			//if (!canSerialize(target))
+			//	throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
 			if (isArrayLike(localType))
 				return buildArrayTable(target);
 
 			int localPK = ++primaryKeyCount;
-			processedComplexObjects.Add(target, localPK);
+			serializedObjects.Add(target, localPK);
 			
 			//localType.Module	- TODO: add this to info tables
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
@@ -372,10 +372,10 @@ namespace SQLiteSerialization {
 		protected int buildArrayTable(object target) {
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (hasBeenSeenBefore(target))
-				return processedComplexObjects[target];     // return the already proc'ed PK
+				return serializedObjects[target];     // return the already proc'ed PK
 
 			int localPK = ++primaryKeyCount;
-			processedComplexObjects.Add(target, localPK);
+			serializedObjects.Add(target, localPK);
 			Type localType = target.GetType();
 
 			// put it in the dict list with its PK
@@ -471,7 +471,7 @@ namespace SQLiteSerialization {
 		}
 
 		protected bool hasBeenSeenBefore(object targetCheck) {
-			return processedComplexObjects.ContainsKey(targetCheck);
+			return serializedObjects.ContainsKey(targetCheck);
 		}
 
 		protected bool isSimpleValue(Type type) {

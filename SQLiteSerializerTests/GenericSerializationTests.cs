@@ -26,5 +26,15 @@ namespace SQLiteSerializerTests {
 			BasicTwoGenericTest<string, int> result = MyTestDeserializeRun<BasicTwoGenericTest<string, int>>();
 			Assert.IsTrue( cont.something == result.something && cont.another == result.another );
 		}
+
+		[TestMethod]
+		public void GenericSameGenericDifferentTypes() {
+			SameGenericDifferentTypes<string, int> cont = new SameGenericDifferentTypes<string, int>();
+			cont.Setup("My string thing-a-majigger", 42);
+			MyTestSerializeRun(cont);
+
+			SameGenericDifferentTypes<string, int> result = MyTestDeserializeRun<SameGenericDifferentTypes<string, int>>();
+			Assert.IsTrue(cont.first == result.first && cont.second == result.second);
+		}
 	}
 }

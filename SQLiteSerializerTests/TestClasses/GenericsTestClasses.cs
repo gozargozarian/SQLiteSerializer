@@ -16,14 +16,30 @@ namespace SQLiteSerializerTests {
 	}
 
 	[Serializable]
-	public class BasicTwoGenericTest<T,K> {
+	public class BasicTwoGenericTest<T,U> {
 		public T something;
-		public K another;
+		public U another;
 		public BasicTwoGenericTest() { }
 
-		public void Setup(T thing,K twoThing) {
+		public void Setup(T thing,U twoThing) {
 			something = thing;
 			another = twoThing;
+		}
+	}
+
+	[Serializable]
+	public class SameGenericDifferentTypes<T,U> {
+		public BasicGenericTest<T> first;
+		public BasicGenericTest<U> second;
+
+		public SameGenericDifferentTypes() { }
+
+		public void Setup(T firstThing, U secondThing) {
+			first = new BasicGenericTest<T>();
+			first.Setup(firstThing);
+
+			second = new BasicGenericTest<U>();
+			second.Setup(secondThing);
 		}
 	}
 }

@@ -118,4 +118,17 @@ namespace SQLiteSerializerTests {
 			);
 		}
 	}
+
+	[Serializable]
+	public class SameRefsClass {
+		public SimpleTest one;
+		public SimpleTest two;
+
+		public SameRefsClass() { }
+		
+		public void Setup() {
+			one = two = new SimpleTest();
+			one.Setup();
+		}
+	}
 }

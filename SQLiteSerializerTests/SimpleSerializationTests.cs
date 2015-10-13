@@ -1,4 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace SQLiteSerializerTests {
 	[TestClass]
@@ -82,5 +83,51 @@ namespace SQLiteSerializerTests {
 			SimilarVarClass result = MyTestDeserializeRun<SimilarVarClass>();
 			Assert.AreEqual(test, result);
         }
+
+		[TestMethod]
+		public void SameClassMultipleRefsTest() {
+			SameRefsClass test = new SameRefsClass();
+			test.Setup();
+
+			MyTestSerializeRun(test);
+
+			SameRefsClass result = MyTestDeserializeRun<SameRefsClass>();
+
+			// NOTE: These compares do NOT use the .Equals() functionality because we want to test the references themselves
+			Assert.IsTrue(test.one == result.two
+							&& test.two == result.one
+							&& test.one == result.one
+							&& test.two == result.two
+							&& result.one == result.two
+						);
+		}
+
+		// TODO: Dynamics may never be supported
+		[TestMethod]
+		public void SpecialTypesDynamicTest() {
+			dynamic test = new { @something="another",@test=42 };
+			MyTestSerializeRun(test);
+
+			dynamic result = MyTestDeserializeRun<dynamic>();
+			Assert.IsTrue(result.something == "another" && result.test == 42);
+		}
+
+		[TestMethod]
+		public void SpecialTypesManyDynamicsTest() {
+			List<dynamic> test = new List<dynamic>();
+			dynamic thing = new { @something = "another", @test = 42 };
+			test.Add(thing);
+			thing = new { @what = 99.0d, @isGoing = "On?" };
+			test.Add(thing);
+			
+			MyTestSerializeRun(test);
+
+			List<dynamic> result = MyTestDeserializeRun<List<dynamic>>();
+			Assert.IsTrue(result.Count == 2);
+			Assert.IsTrue(result[0].something == "another" && result[0].test == 42);
+			Assert.IsTrue(result[1].what == 99.0d && result[1].isGoing == "On?");
+		}
+
+
 	}
 }
