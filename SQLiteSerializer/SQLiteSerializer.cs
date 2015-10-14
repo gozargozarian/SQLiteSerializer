@@ -25,10 +25,11 @@ namespace SQLiteSerialization {
 		protected int primaryKeyCount = 0;
 		protected List<SerializedObjectTableRow> activeTables = new List<SerializedObjectTableRow>(0);		// list of tables in reverse order seen
 		protected List<SerializedArray> activeArrays = new List<SerializedArray>(0);						// list of arrays in reverse order seen, stored in activeTables as primary source
-		protected Dictionary<object,int> serializedObjects = new Dictionary<object,int>(0);			// list of objects with their UIDs in order seen
+		protected Dictionary<object,int> serializedObjects = new Dictionary<object,int>(0);					// list of objects with their UIDs in order seen
 
 		// Deserialize vars
 		protected Dictionary<int, string> serialTable;
+		protected Dictionary<long, object> deserializedObjects = new Dictionary<long, object>(0);
 
 		#region Main Serialization Functions
 		// clean up all the vars from a previous call
@@ -42,6 +43,7 @@ namespace SQLiteSerialization {
 			serializedObjects = new Dictionary<object,int>(0);
 
 			serialTable = new Dictionary<int, string>(0);
+			deserializedObjects = new Dictionary<long, object>(0);
         }
 
 		public void Serialize(object target, string databaseConnectionString, bool autoDeleteExistingFile=true) {
@@ -191,15 +193,19 @@ namespace SQLiteSerialization {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals(field.Name));
                         object val = col.columnValue;
 						if (!isSimpleValue(field.FieldType) && val != null) {
-							Type[] genericArgument = { field.FieldType };
-							// do something awful...
-							val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-									.MakeGenericMethod(genericArgument)
-									.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)) });
-						}
+							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
+								Type[] genericArgument = { field.FieldType };
+								// do something awful...
+								val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
+										.MakeGenericMethod(genericArgument)
+										.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)) });
+								deserializedObjects.Add((long)col.columnValue, val);
+							} else { val = deserializedObjects[(long)col.columnValue]; }
+                        }
 						field.SetValue(container, Convert.ChangeType(val, field.FieldType));
 					}
 				}
+
 				return container;
 			}
 		}
@@ -292,7 +298,7 @@ namespace SQLiteSerialization {
 					}
 					break;
 			}
-			
+
 			return container;
 		}
 

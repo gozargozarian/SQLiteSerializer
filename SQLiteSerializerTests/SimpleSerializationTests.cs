@@ -94,12 +94,7 @@ namespace SQLiteSerializerTests {
 			SameRefsClass result = MyTestDeserializeRun<SameRefsClass>();
 
 			// NOTE: These compares do NOT use the .Equals() functionality because we want to test the references themselves
-			Assert.IsTrue(test.one == result.two
-							&& test.two == result.one
-							&& test.one == result.one
-							&& test.two == result.two
-							&& result.one == result.two
-						);
+			Assert.IsTrue(test.one == test.two && result.one == result.two);
 		}
 
 		// TODO: Dynamics may never be supported
