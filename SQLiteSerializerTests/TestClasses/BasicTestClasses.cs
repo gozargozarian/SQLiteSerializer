@@ -14,7 +14,7 @@ namespace SQLiteSerializerTests {
 		public SimpleTest() {
 		}
 
-		public void Setup() {
+		public virtual void Setup() {
 			text = "This is Text.";
 			number = 23;
 			decimalPoint = 2.45f;

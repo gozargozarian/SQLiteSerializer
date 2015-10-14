@@ -122,7 +122,5 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(result[0].something == "another" && result[0].test == 42);
 			Assert.IsTrue(result[1].what == 99.0d && result[1].isGoing == "On?");
 		}
-
-
 	}
 }

@@ -81,10 +81,12 @@
     <Compile Include="BaseTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReflectionTest.cs" />
+    <Compile Include="InheritanceSerializationTests.cs" />
     <Compile Include="SimpleSerializationTests.cs" />
     <Compile Include="TestClasses\ArrayLikeTestClasses.cs" />
     <Compile Include="TestClasses\BasicTestClasses.cs" />
     <Compile Include="TestClasses\GenericsTestClasses.cs" />
+    <Compile Include="TestClasses\InheritanceTestClasses.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SQLiteSerializer\SQLiteSerializer.csproj">

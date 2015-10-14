@@ -109,6 +109,22 @@ namespace SQLiteSerializerTests {
 	}
 
 	[Serializable]
+	public class MyVeryOwnList : List<string> {
+		public int thing;
+		public string another;
+
+		public MyVeryOwnList() { }
+		public void Setup() {
+			thing = 42;
+			another = "Party time!";
+
+			for (int i = 0; i < 10; i++) {
+				this.Add("This is item #" + i);
+			}
+		}
+	}
+
+	[Serializable]
 	public class SimpleDictionaryContainer : IEquatable<SimpleDictionaryContainer>,IComparable<SimpleDictionaryContainer> {
 		public SimpleDictionaryContainer() { }
 
@@ -215,6 +231,22 @@ namespace SQLiteSerializerTests {
 			return (
 				objs.ContentEquals(other.objs)
 			);
+		}
+	}
+
+	[Serializable]
+	public class MyVeryOwnDictionary : Dictionary<int,string> {
+		public int thing;
+		public string another;
+
+		public MyVeryOwnDictionary() { }
+		public void Setup() {
+			thing = 42;
+			another = "Party time!";
+			
+			for (int i=0; i<10; i++) {
+				this.Add(i, "This is item #" + i);
+			}
 		}
 	}
 
