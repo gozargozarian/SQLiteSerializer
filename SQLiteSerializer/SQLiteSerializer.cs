@@ -191,7 +191,7 @@ namespace SQLiteSerialization {
                 } else {
 					FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
 					foreach (FieldInfo field in fields) {
-						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals(field.Name));
+						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
                         object val = col.columnValue;
 						if (!isSimpleValue(field.FieldType) && val != null) {
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
@@ -311,6 +311,7 @@ namespace SQLiteSerialization {
 				return serializedObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
+			// interestingly, my serializer doesn't require [Serializable] because it is pure reflection. I guess I don't know how serializers do it?
 			//if (!canSerialize(target))
 			//	throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
 			if (isArrayLike(localType))
@@ -498,7 +499,6 @@ namespace SQLiteSerialization {
 
 			return false;
 		}
-
 		#endregion
 
 		#region SQLite specific functions

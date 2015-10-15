@@ -7,10 +7,10 @@ namespace SQLiteSerialization {
 		public string columnType { get; set; }
 		public object columnValue { get; set; }
 
-		public string columnTypeSQLSafe { get { return columnType.Replace(".","_").Split(new char[] { '`' })[0]; } }
+		public string columnTypeSQLSafe { get { return SerializeUtilities.MakeSafeSQLType(columnType); } }
         public string sqlName {
 			get {
-				return sqlShortName + columnName;
+				return sqlShortName + SerializeUtilities.MakeSafeColumn(columnName);
             }
         }
 		public string sqlShortName {
@@ -130,7 +130,7 @@ namespace SQLiteSerialization {
 
 		public int UniqueID { get { return serializedID; } }
 		public string TableName { get { return tablename; } }
-		public string TableNameSQL { get { return tablename.Replace(".","_").Split(new char[] { '`' })[0]; } }
+		public string TableNameSQL { get { return SerializeUtilities.MakeSafeSQLType(tablename); } }
         public List<SerializedObjectColumn> Columns { get { return columns; } }
 
 		public SerializedObjectTableRow(int serializedID, string tablename) {

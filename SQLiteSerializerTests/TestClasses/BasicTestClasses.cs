@@ -131,4 +131,28 @@ namespace SQLiteSerializerTests {
 			one.Setup();
 		}
 	}
+
+	[Serializable]
+	public class SimplePropertiesClass {
+		private string forGetter;
+		public string stuff { get; set; }
+		private int another { get; set; }
+		public string pureGetter { get { return forGetter; } }
+
+		public SimplePropertiesClass() { }
+		public void Setup() {
+			forGetter = "The Getter";
+			stuff = "stuff";
+			another = 42;
+		}
+
+		public bool Equals(SimplePropertiesClass other) {
+			return (
+				forGetter == other.forGetter
+				&& stuff == other.stuff
+				&& another == other.another
+				&& pureGetter == other.pureGetter
+            );
+		}
+	}
 }

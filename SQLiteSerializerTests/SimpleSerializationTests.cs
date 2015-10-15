@@ -97,6 +97,17 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(test.one == test.two && result.one == result.two);
 		}
 
+		[TestMethod]
+		public void SimplePropertiesTest() {
+			SimplePropertiesClass test = new SimplePropertiesClass();
+			test.Setup();
+
+			MyTestSerializeRun(test);
+
+			SimplePropertiesClass result = MyTestDeserializeRun<SimplePropertiesClass>();
+			Assert.IsTrue(test.Equals(result));
+		}
+
 		// TODO: Dynamics may never be supported
 		[TestMethod]
 		public void SpecialTypesDynamicTest() {
