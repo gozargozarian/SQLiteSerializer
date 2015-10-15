@@ -7,6 +7,7 @@ namespace SQLiteSerializerTests {
 		public string text;
 		public int number;
 		public float decimalPoint;
+		public static string statsMcGee;
 
 		private string something;
 		private bool flagOfSomething;
@@ -20,7 +21,8 @@ namespace SQLiteSerializerTests {
 			decimalPoint = 2.45f;
 			something = "Private text.";
 			flagOfSomething = true;
-		}
+			statsMcGee = "Fo' Shizzle";
+        }
 
 		public override int GetHashCode() {
 			return base.GetHashCode();
@@ -33,7 +35,8 @@ namespace SQLiteSerializerTests {
 				&& decimalPoint == other.decimalPoint
 				&& something == other.something
 				&& flagOfSomething == other.flagOfSomething
-            );
+				&& SimpleTest.statsMcGee == "Fo' Shizzle"
+			);
 		}
 	}
 

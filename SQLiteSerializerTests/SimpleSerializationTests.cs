@@ -108,7 +108,9 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(test.Equals(result));
 		}
 
-		// TODO: Dynamics may never be supported
+		/*** TODO: Dynamics may never be supported because the properties of the type are unknown at deserialization time.
+			There would need to be a way of marking this and specifically handling it
+		***/
 		[TestMethod]
 		public void SpecialTypesDynamicTest() {
 			dynamic test = new { @something="another",@test=42 };

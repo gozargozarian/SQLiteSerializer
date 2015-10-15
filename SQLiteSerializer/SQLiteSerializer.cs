@@ -189,17 +189,17 @@ namespace SQLiteSerialization {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
                     container = (T)Convert.ChangeType(val,typeof(T));
                 } else {
-					FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-					foreach (FieldInfo field in fields) {
+					FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
+                    foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
                         object val = col.columnValue;
 						if (!isSimpleValue(field.FieldType) && val != null) {
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
-								Type[] genericArgument = { field.FieldType };
-								// do something awful...
-								val = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-										.MakeGenericMethod(genericArgument)
-										.Invoke(this, new object[] { Convert.ChangeType(val, typeof(int)) });
+								val = SerializeUtilities.CallGenericMethodWithReflection(
+									this, "readSQLTableToObject",
+									new Type[] { field.FieldType },
+									new object[] { Convert.ChangeType(val, typeof(int)) }
+								);
 								deserializedObjects.Add((long)col.columnValue, val);
 							} else { val = deserializedObjects[(long)col.columnValue]; }
                         }
@@ -230,10 +230,11 @@ namespace SQLiteSerialization {
 							if (isSimpleValue(containerType))
 								completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
 							else {
-								Type[] genericArgument = { containerType };
-								object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-										.MakeGenericMethod(genericArgument)
-										.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
+								object o = SerializeUtilities.CallGenericMethodWithReflection(
+									this, "readSQLTableToObject",
+									new Type[] { containerType },
+									new object[] { castRawSQLiteArrayVal(items[i], containerType) }
+								);
 								completeArr.SetValue(o, i);
 							}
 						}
@@ -255,10 +256,11 @@ namespace SQLiteSerialization {
 							if (isSimpleValue(containerType))
 								((IList)completeArr).Insert(i,castRawSQLiteArrayVal(items[i], containerType));
 							else {
-								Type[] genericArgument = { containerType };
-								object o = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-										.MakeGenericMethod(genericArgument)
-										.Invoke(this, new object[] { castRawSQLiteArrayVal(items[i], containerType) });
+								object o = SerializeUtilities.CallGenericMethodWithReflection(
+									this, "readSQLTableToObject",
+									new Type[] { containerType },
+									new object[] { castRawSQLiteArrayVal(items[i], containerType) }
+								);
 								((IList)completeArr).Insert(i,o);
 							}
 						}
@@ -279,19 +281,21 @@ namespace SQLiteSerialization {
 							if (isSimpleValue(keyType))
 								keyHolder = castRawSQLiteArrayVal(pair.Key, keyType);
 							else {
-								Type[] genericArgument = { keyType };
-								keyHolder = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-										.MakeGenericMethod(genericArgument)
-										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Key, keyType) });
+								keyHolder = SerializeUtilities.CallGenericMethodWithReflection(
+									this, "readSQLTableToObject",
+									new Type[] { keyType },
+									new object[] { castRawSQLiteArrayVal(pair.Key, keyType) }
+								);
 							}
 							object valueHolder;
 							if (isSimpleValue(containerType))
 								valueHolder = castRawSQLiteArrayVal(pair.Value, containerType);
 							else {
-								Type[] genericArgument = { containerType };
-								valueHolder = this.GetType().GetMethod("readSQLTableToObject", BindingFlags.NonPublic | BindingFlags.Instance)
-										.MakeGenericMethod(genericArgument)
-										.Invoke(this, new object[] { castRawSQLiteArrayVal(pair.Value, containerType) });
+								valueHolder = SerializeUtilities.CallGenericMethodWithReflection(
+									this, "readSQLTableToObject",
+									new Type[] { containerType },
+									new object[] { castRawSQLiteArrayVal(pair.Value, containerType) }
+								);
 							}
 							((IDictionary)completeArr).Add(keyHolder,valueHolder);
 						}
@@ -327,7 +331,7 @@ namespace SQLiteSerialization {
 			if (isSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
 				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
 			} else {
-				FieldInfo[] fields = localType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+				FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
 
 				foreach (FieldInfo field in fields) {
 					Type fieldType = field.FieldType;
