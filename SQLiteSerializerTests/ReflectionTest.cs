@@ -45,28 +45,6 @@ namespace SQLiteSerializerTests {
 		}
 		#endregion
 
-		#region Additional test attributes
-		//
-		// You can use the following additional attributes as you write your tests:
-		//
-		// Use ClassInitialize to run code before running the first test in the class
-		// [ClassInitialize()]
-		// public static void MyClassInitialize(TestContext testContext) { }
-		//
-		// Use ClassCleanup to run code after all tests in a class have run
-		// [ClassCleanup()]
-		// public static void MyClassCleanup() { }
-		//
-		// Use TestInitialize to run code before running each test 
-		// [TestInitialize()]
-		// public void MyTestInitialize() { }
-		//
-		// Use TestCleanup to run code after each test has run
-		// [TestCleanup()]
-		// public void MyTestCleanup() { }
-		//
-		#endregion
-
 		[TestMethod]
 		public void StringFormattingTest() {
 			// I just needed to see if you could replace one argument multiple times
@@ -152,6 +130,15 @@ namespace SQLiteSerializerTests {
 			Assert.IsTrue(sbaType.IsArray);
 			Assert.IsTrue(sbaType.BaseType.FullName == "System.Array");
 		}
+
+		[TestMethod]
+		public void ReflectionInheritanceFields() {
+			Type t = typeof(InheritedSimpleTest);
+			FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+
+			// We will assert false because we recongize that the above process fails us: It does not return privates of inherited objects!!
+			Assert.IsFalse(fields.Length > 6);
+        }
 
 		[TestMethod]
 		public void ReflectionArrayAndGenericCastingTest() {

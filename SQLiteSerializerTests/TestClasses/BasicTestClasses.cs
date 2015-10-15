@@ -10,7 +10,7 @@ namespace SQLiteSerializerTests {
 		public static string statsMcGee;
 
 		private string something;
-		private bool flagOfSomething;
+		protected bool flagOfSomething;
 
 		public SimpleTest() {
 		}
