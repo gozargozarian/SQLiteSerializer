@@ -46,7 +46,7 @@ namespace SQLiteSerializerTests {
 		#endregion
 
 		[TestMethod]
-		public void StringFormattingTest() {
+		public void StupidStuff_StringFormattingTest() {
 			// I just needed to see if you could replace one argument multiple times
 			string thing = "dog";
 			string test = string.Format("This {0} is like a fat {0}, but much bigger!", thing);
@@ -55,7 +55,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionPropertiesTest() {
+		public void Reflection_PropertiesTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -65,7 +65,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
-		public void ReflectionFieldsTest() {
+		public void Reflection_FieldsTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -75,7 +75,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionSetPrivatesTest() {
+		public void Reflection_SetPrivatesTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -92,7 +92,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionSetAllFieldsTest() {
+		public void Reflection_SetAllFieldsTest() {
 			Garbage test = new Garbage();
 
 			Type tType = test.GetType();
@@ -109,7 +109,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionWhatIsASystemArrayTest() {
+		public void Reflection_WhatIsASystemArrayTest() {
 			string[] strArr = new string[50];
 			int[] intArr = new int[25];
 			StringBuilder[] sbArr = new StringBuilder[10];
@@ -132,7 +132,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionInheritanceFields() {
+		public void Reflection_InheritanceFields() {
 			Type t = typeof(InheritedSimpleTest);
 			FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
 
@@ -141,7 +141,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
-		public void ReflectionBaseObjectDetection() {
+		public void Reflection_BaseObjectDetection() {
 			BaseTest test = new BaseTest();
 			Assert.IsTrue(test.GetType().BaseType == typeof(object));
 
@@ -160,7 +160,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ReflectionArrayAndGenericCastingTest() {
+		public void Reflection_ArrayAndGenericCastingTest() {
 			int[] test = new int[5] { 1, 2, 3, 4, 5 };		// just to compare
 			int[] target = helperTest<int[]>();
 		}

@@ -9,7 +9,7 @@ namespace SQLiteSerializerTests {
 
 		#region System.Array Tests
 		[TestMethod]
-		public void ArrayBasicSerializationTest() {
+		public void Array_BasicSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -19,7 +19,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
-		public void ArrayOfObjectsSerializationTest() {
+		public void Array_ArrayOfObjectsSerializationTest() {
 			ComplexArrayContainer cont = new ComplexArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -29,7 +29,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ArrayStandaloneSerializationTest() {
+		public void Array_StandaloneSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
@@ -39,12 +39,12 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ArrayWithinArraySerializationTest() {
+		public void Array_ArrayWithinArraySerializationTest() {
 
 		}
 
 		[TestMethod]
-		public void ArrayDifferentArrayTypesTest() {
+		public void Array_DifferentArrayTypesTest() {
 			DifferentArrayTypes test = new DifferentArrayTypes();
 			test.Setup();
 
@@ -57,7 +57,7 @@ namespace SQLiteSerializerTests {
 
 		#region IList Tests
 		[TestMethod]
-		public void ListSerializationTest() {
+		public void List_SerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -67,7 +67,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ListOfObjectsSerializationTest() {
+		public void List_ListOfObjectsSerializationTest() {
 			ComplexListContainer cont = new ComplexListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -77,7 +77,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ListStandaloneSerializationTest() {
+		public void List_StandaloneSerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
@@ -87,14 +87,14 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void ListWithinListSerializationTest() {
+		public void List_ListWithinListSerializationTest() {
 
 		}
 		#endregion
 
 		#region IDictionary Tests
 		[TestMethod]
-		public void DictionarySerializationTest() {
+		public void Dictionary_SerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -104,7 +104,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void DictionaryOfObjectsSerializationTest() {
+		public void Dictionary_DictionaryOfObjectsSerializationTest() {
 			ComplexDictionaryContainer cont = new ComplexDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -114,7 +114,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void DictionaryOfArrayKeysSerializationTest() {
+		public void Dictionary_DictionaryOfArrayKeysSerializationTest() {
 			ArrayKeyDictionaryContainer cont = new ArrayKeyDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -124,7 +124,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void DictionaryOfObjectsKeysOfObjectsSerializationTest() {
+		public void Dictionary_DictionaryOfObjectsKeysOfObjectsSerializationTest() {
 			VeryComplexDictionaryContainer cont = new VeryComplexDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -134,7 +134,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void DictionaryStandaloneSerializationTest() {
+		public void Dictionary_StandaloneSerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
 			MyTestSerializeRun(cont.strs);
@@ -144,7 +144,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void DictionaryWithinDictionarySerializationTest() {
+		public void Dictionary_DictionaryWithinDictionarySerializationTest() {
 
 		}
 		#endregion

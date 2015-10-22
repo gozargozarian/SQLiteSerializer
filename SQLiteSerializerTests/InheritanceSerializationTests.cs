@@ -7,7 +7,7 @@ namespace SQLiteSerializerTests {
 		public InheritanceSerializationTests() : base() { }
 
 		[TestMethod]
-		public void InheritanceSimpleObjectTest() {
+		public void Inheritance_SimpleObjectTest() {
 			InheritedSimpleTest cont = new InheritedSimpleTest();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -17,7 +17,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void InheritanceCustomListTest() {
+		public void Inheritance_CustomListTest() {
 			MyVeryOwnList cont = new MyVeryOwnList();
 			cont.Setup();
 			MyTestSerializeRun(cont);
@@ -29,7 +29,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void InheritanceCustomDictionaryTest() {
+		public void Inheritance_CustomDictionaryTest() {
 			MyVeryOwnDictionary cont = new MyVeryOwnDictionary();
 			cont.Setup();
 			MyTestSerializeRun(cont);

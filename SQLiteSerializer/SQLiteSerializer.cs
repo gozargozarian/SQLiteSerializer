@@ -7,14 +7,12 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-using System.Linq;
-
 using System.IO;
 using System.Collections;
 
 namespace SQLiteSerialization {
 	public class SQLiteSerializer {
-		public static string Version = "1.0.2b";
+		public static string Version = "1.0.3b";
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
 

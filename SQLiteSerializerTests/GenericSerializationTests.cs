@@ -8,7 +8,7 @@ namespace SQLiteSerializerTests {
 		public GenericSerializationTests() : base() {}
 		
 		[TestMethod]
-		public void GenericBasicSerializationTest() {
+		public void Generic_BasicSerializationTest() {
 			BasicGenericTest<string> cont = new BasicGenericTest<string>();
 			cont.Setup("My Test");
 			MyTestSerializeRun(cont);
@@ -18,7 +18,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
-		public void GenericBasicTwoSerializationTest() {
+		public void Generic_BasicTwoSerializationTest() {
 			BasicTwoGenericTest<string, int> cont = new BasicTwoGenericTest<string, int>();
 			cont.Setup("My Test",42);
 			MyTestSerializeRun(cont);
@@ -28,7 +28,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void GenericSameGenericDifferentTypes() {
+		public void Generic_SameGenericDifferentTypes() {
 			SameGenericDifferentTypes<string, int> cont = new SameGenericDifferentTypes<string, int>();
 			cont.Setup("My string thing-a-majigger", 42);
 			MyTestSerializeRun(cont);
