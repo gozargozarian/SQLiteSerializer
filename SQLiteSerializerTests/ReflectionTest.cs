@@ -141,11 +141,29 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		public void ReflectionBaseObjectDetection() {
+			BaseTest test = new BaseTest();
+			Assert.IsTrue(test.GetType().BaseType == typeof(object));
+
+			Dictionary<int, string> d = new Dictionary<int, string>();
+			bool found = false;
+			Type baseT = d.GetType().BaseType;
+			for(;;) {
+				if (baseT != typeof(object)) {
+					baseT = baseT.BaseType;
+				} else {
+					found = true;
+					break;
+				}
+			}
+			Assert.IsTrue( found );
+		}
+
+		[TestMethod]
 		public void ReflectionArrayAndGenericCastingTest() {
 			int[] test = new int[5] { 1, 2, 3, 4, 5 };		// just to compare
 			int[] target = helperTest<int[]>();
 		}
-
 		private T helperTest<T>() {
 			int[] fromList = new int[5] { 1, 2, 3, 4, 5 };  // return this through a generic
             return (T)Convert.ChangeType(fromList, typeof(T));
