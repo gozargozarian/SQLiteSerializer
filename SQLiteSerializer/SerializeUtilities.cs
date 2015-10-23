@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.RegularExpressions;
 
 // TODO: Investigate the portability of [MethodImpl(MethodImplOptions.AggressiveInlining)]
 namespace SQLiteSerialization {
 	public static class SerializeUtilities {
+		static Regex safeSQLTypeRegEx = new Regex("");
+
 		#region SQLite Formatting
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string MakeSafeColumn(string variableName) {
@@ -15,11 +19,31 @@ namespace SQLiteSerialization {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string MakeSafeSQLType(string sqlType) {
-			return sqlType.Replace(".", "_").Replace("<", "").Replace(">", "").Split(new char[] { '`' })[0];
+			StringBuilder typename = new StringBuilder( CleanTypeNameFromString(sqlType) );
+			if (sqlType.Contains('`')) {
+				string genericString = sqlType.Split(new char[] { '`' })[1];
+				int genericsCount = int.Parse(genericString.Split(new char[] { '[' })[0]);
+				typename.AppendFormat("_{0}", genericsCount);
+
+				genericString = genericString.Replace("[[", "[").Replace("]]", "]");
+				string[] generics = genericString.Split(new char[] { '[',']' },StringSplitOptions.RemoveEmptyEntries);
+				for (int index=1; index <= genericsCount; index++) {
+					if (generics[index] == ",") continue;
+					string subtypename = generics[index].Split(new char[] { ',' })[0];
+                    typename.AppendFormat("_{0}", MakeSafeSQLType(subtypename));
+				}
+            }
+
+			return typename.ToString();
         }
 		#endregion
 
 		#region Reflection Helpers
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static string CleanTypeNameFromString(string typeName) {
+			return typeName.Replace(".", "_").Replace("<", "").Replace(">", "").Split(new char[] { '`' })[0];
+		}
+
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static object CallGenericMethodWithReflection(object caller,string methodName,Type[] genericsArray,object[] parameters=null) {
 			// do something awful...

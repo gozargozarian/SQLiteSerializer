@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace SQLiteSerialization {
 	public class SerializedObjectColumn : IEquatable<SerializedObjectColumn> {
+		// TODO: Find a way to make MakeSafeSQLType() faster. It is hit many times. Store a "dirty" flag and the cached typename
 		public string columnName { get; set; }
 		public string columnType { get; set; }
 		public object columnValue { get; set; }

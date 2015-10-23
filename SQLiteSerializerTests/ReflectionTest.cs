@@ -137,7 +137,7 @@ namespace SQLiteSerializerTests {
 			FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
 
 			// We will assert false because we recongize that the above process fails us: It does not return privates of inherited objects!!
-			Assert.IsFalse(fields.Length > 6);
+			Assert.IsFalse(fields.Length > 7);
         }
 
 		[TestMethod]

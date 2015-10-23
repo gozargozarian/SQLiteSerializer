@@ -34,7 +34,7 @@ namespace SQLiteSerializerTests {
 			MyTestSerializeRun(cont);
 
 			SameGenericDifferentTypes<string, int> result = MyTestDeserializeRun<SameGenericDifferentTypes<string, int>>();
-			Assert.IsTrue(cont.first == result.first && cont.second == result.second);
+			Assert.IsTrue(cont.first.something == result.first.something && cont.second.something == result.second.something);
 		}
 	}
 }

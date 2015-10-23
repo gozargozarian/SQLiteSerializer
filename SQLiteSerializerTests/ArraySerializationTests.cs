@@ -44,6 +44,19 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		public void Array_MultidimensionalArrayTest() {
+			string[,] test = new string[2,2] { { "blah", "barg" }, { "eek", "scream" } };
+			MyTestSerializeRun(test);
+
+			string[,] result = MyTestDeserializeRun<string[,]>();
+			Assert.IsTrue(test[0 ,0] == result[0, 0] 
+				&& test[0, 1] == result[0, 1] 
+				&& test[1, 0] == result[1, 0]
+				&& test[1, 1] == result[1, 1]
+			);
+        }
+
+		[TestMethod]
 		public void Array_DifferentArrayTypesTest() {
 			DifferentArrayTypes test = new DifferentArrayTypes();
 			test.Setup();

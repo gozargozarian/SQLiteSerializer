@@ -91,7 +91,7 @@ namespace SQLiteSerialization {
 		protected List<SQLiteParameter> buildSQLStrings() {
 			List<SQLiteParameter> bindParams = new List<SQLiteParameter>();
 			List<string> createdTables = new List<string>(activeTables.Count);
-			sqlDefinitionRegion.AppendFormat("CREATE TABLE {1}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,location TEXT);{0}{0}",Environment.NewLine, SerialInfoTableName);
+			sqlDefinitionRegion.AppendFormat("CREATE TABLE {1}(PK INTEGER PRIMARY KEY AUTOINCREMENT,UID INTEGER UNIQUE,location TEXT,typename TEXT);{0}{0}",Environment.NewLine, SerialInfoTableName);
 
 			foreach (SerializedObjectTableRow table in activeTables) {
 				StringBuilder insertColDef = new StringBuilder();
@@ -114,7 +114,7 @@ namespace SQLiteSerialization {
 				if (isArrayTable) {
 					int UIDParamNo = -1;
 					SerializedArray sarr = findArray(table.UniqueID);
-					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}",new object[] { sarr.UniqueID, ArrayTableName, Environment.NewLine, SerialInfoTableName });
+					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}",new object[] { sarr.UniqueID, ArrayTableName, table.TableName, Environment.NewLine, SerialInfoTableName});
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
 					UIDParamNo = bindParams.Count;
@@ -136,7 +136,7 @@ namespace SQLiteSerialization {
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
                 } else {
-					sqlDataRegion.AppendFormat("INSERT INTO {3}(UID,location) VALUES ({0},'{1}');{2}{2}", new object[] { table.UniqueID, table.TableNameSQL, Environment.NewLine, SerialInfoTableName });
+					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}", new object[] { table.UniqueID, table.TableNameSQL, table.TableName, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
 					insertColDef.Append("(UID");
 					insertColValue.Append("(@v" + bindParams.Count);
@@ -201,7 +201,10 @@ namespace SQLiteSerialization {
 								deserializedObjects.Add((long)col.columnValue, val);
 							} else { val = deserializedObjects[(long)col.columnValue]; }
                         }
-						field.SetValue(container, Convert.ChangeType(val, field.FieldType));
+						if (field.FieldType.IsEnum)
+							field.SetValue(container, Enum.ToObject(field.FieldType, val));
+						else
+							field.SetValue(container, Convert.ChangeType(val, field.FieldType));
 					}
 				}
 
@@ -225,9 +228,12 @@ namespace SQLiteSerialization {
 						}
 						Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
 						for (int i = 0; i < items.Count; i++) {
-							if (isSimpleValue(containerType))
-								completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
-							else {
+							if (isSimpleValue(containerType)) {
+								if (containerType.IsEnum)
+									completeArr.SetValue(Enum.ToObject(containerType, items[i]), i);
+								else
+									completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
+							} else {
 								object o = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
 									new Type[] { containerType },
@@ -251,15 +257,18 @@ namespace SQLiteSerialization {
 						}
 						object completeArr = Activator.CreateInstance(typeof(T));
 						for (int i = 0; i < items.Count; i++) {
-							if (isSimpleValue(containerType))
-								((IList)completeArr).Insert(i,castRawSQLiteArrayVal(items[i], containerType));
-							else {
+							if (isSimpleValue(containerType)) {
+								if (containerType.IsEnum)
+									((IList)completeArr).Insert(i, Enum.ToObject(containerType, items[i]));
+								else
+									((IList)completeArr).Insert(i, castRawSQLiteArrayVal(items[i], containerType));
+							} else {
 								object o = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
 									new Type[] { containerType },
 									new object[] { castRawSQLiteArrayVal(items[i], containerType) }
 								);
-								((IList)completeArr).Insert(i,o);
+								((IList)completeArr).Insert(i, o);
 							}
 						}
 						container = (T)completeArr;
@@ -276,9 +285,12 @@ namespace SQLiteSerialization {
 						Dictionary<string, string> entries = readComplexArrayTableEntries(UID);
 						foreach (KeyValuePair<string, string> pair in entries) {
 							object keyHolder;
-							if (isSimpleValue(keyType))
-								keyHolder = castRawSQLiteArrayVal(pair.Key, keyType);
-							else {
+							if (isSimpleValue(keyType)) {
+								if (keyType.IsEnum)
+									keyHolder = Enum.ToObject(keyType, pair.Key);
+								else
+									keyHolder = castRawSQLiteArrayVal(pair.Key, keyType);
+							} else {
 								keyHolder = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
 									new Type[] { keyType },
@@ -286,9 +298,12 @@ namespace SQLiteSerialization {
 								);
 							}
 							object valueHolder;
-							if (isSimpleValue(containerType))
-								valueHolder = castRawSQLiteArrayVal(pair.Value, containerType);
-							else {
+							if (isSimpleValue(containerType)) {
+								if (containerType.IsEnum)
+									valueHolder = Enum.ToObject(containerType, pair.Value);
+								else
+									valueHolder = castRawSQLiteArrayVal(pair.Value, containerType);
+							} else {
 								valueHolder = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
 									new Type[] { containerType },
@@ -583,7 +598,7 @@ namespace SQLiteSerialization {
 					case "time":
 						return DateTime.Parse(rawValue);        // not sure what is going to happen here, catch it in a unit test
 					default:
-						return int.Parse(rawValue);             // this.... should never happen and something bad caused this
+						return long.Parse(rawValue);             // this.... should never happen and something bad caused this OR it's an enum?
 				}
 			} else { return Convert.ChangeType(rawValue, typeof(int)); }
 		}

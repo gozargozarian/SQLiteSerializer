@@ -2,8 +2,16 @@
 using System.Text;
 
 namespace SQLiteSerializerTests {
+	public enum TestEnum {
+		None = 0,
+		Something,
+		Another,
+		Whatever
+	}
+
 	[Serializable]
 	public class SimpleTest : IEquatable<SimpleTest> {
+		public TestEnum enumItem;
 		public string text;
 		public int number;
 		public float decimalPoint;
@@ -16,6 +24,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		public virtual void Setup() {
+			enumItem = TestEnum.Another;
 			text = "This is Text.";
 			number = 23;
 			decimalPoint = 2.45f;
@@ -31,6 +40,7 @@ namespace SQLiteSerializerTests {
 		public bool Equals(SimpleTest other) {
 			return (
 				text == other.text
+				&& enumItem == other.enumItem
 				&& number == other.number
 				&& decimalPoint == other.decimalPoint
 				&& something == other.something
