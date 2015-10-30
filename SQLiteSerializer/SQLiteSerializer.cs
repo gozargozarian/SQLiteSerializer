@@ -130,7 +130,7 @@ namespace SQLiteSerialization {
 						if (!firsttime) insertColValue.Append("),"); firsttime = false;
 						insertColValue.AppendFormat("(@v{0},@v{1},@v{2}", UIDParamNo, bindParams.Count,bindParams.Count + 1);
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
-						if (!isSimpleValue(sarr.ValueType) && (int)item.value == -1)
+						if (!SerializeUtilities.IsSimpleValue(sarr.ValueType) && (int)item.value == -1)
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, null));
 						else
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
@@ -181,9 +181,9 @@ namespace SQLiteSerialization {
 			if (tablename == ArrayTableName) {
 				return readAllArrayEntries<T>(UID);
 			} else {
-				T container = (T)createUnintializedObject(typeof(T));
+				T container = (T)SerializeUtilities.CreateUninitializedObject(typeof(T));
 				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
-				if (isSimpleValue(localType)) {
+				if (SerializeUtilities.IsSimpleValue(localType)) {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
                     container = (T)Convert.ChangeType(val,typeof(T));
                 } else {
@@ -191,7 +191,7 @@ namespace SQLiteSerialization {
                     foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
                         object val = col.columnValue;
-						if (!isSimpleValue(field.FieldType) && val != null) {
+						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
 								val = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
@@ -226,9 +226,9 @@ namespace SQLiteSerialization {
 						foreach (KeyValuePair<int, string> pair in entries) {
 							items.Add(pair.Value);
 						}
-						Array completeArr = (Array)createUnintializedObject(typeof(T), items.Count);
+						Array completeArr = (Array)SerializeUtilities.CreateUninitializedObject(typeof(T), items.Count);
 						for (int i = 0; i < items.Count; i++) {
-							if (isSimpleValue(containerType)) {
+							if (SerializeUtilities.IsSimpleValue(containerType)) {
 								if (containerType.IsEnum)
 									completeArr.SetValue(Enum.ToObject(containerType, items[i]), i);
 								else
@@ -257,7 +257,7 @@ namespace SQLiteSerialization {
 						}
 						object completeArr = Activator.CreateInstance(typeof(T));
 						for (int i = 0; i < items.Count; i++) {
-							if (isSimpleValue(containerType)) {
+							if (SerializeUtilities.IsSimpleValue(containerType)) {
 								if (containerType.IsEnum)
 									((IList)completeArr).Insert(i, Enum.ToObject(containerType, items[i]));
 								else
@@ -285,7 +285,7 @@ namespace SQLiteSerialization {
 						Dictionary<string, string> entries = readComplexArrayTableEntries(UID);
 						foreach (KeyValuePair<string, string> pair in entries) {
 							object keyHolder;
-							if (isSimpleValue(keyType)) {
+							if (SerializeUtilities.IsSimpleValue(keyType)) {
 								if (keyType.IsEnum)
 									keyHolder = Enum.ToObject(keyType, pair.Key);
 								else
@@ -298,7 +298,7 @@ namespace SQLiteSerialization {
 								);
 							}
 							object valueHolder;
-							if (isSimpleValue(containerType)) {
+							if (SerializeUtilities.IsSimpleValue(containerType)) {
 								if (containerType.IsEnum)
 									valueHolder = Enum.ToObject(containerType, pair.Value);
 								else
@@ -328,10 +328,13 @@ namespace SQLiteSerialization {
 				return serializedObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
-			// interestingly, my serializer doesn't require [Serializable] because it is pure reflection. I guess I don't know how serializers do it?
+			// interestingly, my serializer doesn't require [Serializable] because it is pure reflection. Serializers probably use FormatterServices.
 			//if (!canSerialize(target))
 			//	throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
-			if (isArrayLike(localType))
+
+			// can't handle this because it is doomed to become abstract
+			if (localType.IsAbstract) return -1;
+			if (SerializeUtilities.IsArrayLike(localType))
 				return buildArrayTable(target);
 
 			int localPK = ++primaryKeyCount;
@@ -341,7 +344,7 @@ namespace SQLiteSerialization {
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
 			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType.FullName);
 
-			if (isSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
+			if (SerializeUtilities.IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
 				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
 			} else {
 				FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
@@ -358,11 +361,12 @@ namespace SQLiteSerialization {
 
 		protected void serializeSubObject(SerializedObjectTableRow table, Type fieldType, FieldInfo field, object parentObj) {
 			// Condition 1: Simple Val
-			if (isSimpleValue(fieldType)) {
+			if (SerializeUtilities.IsSimpleValue(fieldType)) {
 				// we can store this raw
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(parentObj));
 				table.AddColumn(col);
-
+			
+			// TODO: Reduce these into one
 				// Condition 2: Dictionaries
 			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
 				// make a dict entry
@@ -395,6 +399,8 @@ namespace SQLiteSerialization {
 		}
 
 		protected int buildArrayTable(object target) {
+			if (target == null) return -1;
+
 			// check and add object to the global seen list. Makes unique objects (top-down) and stops infinite recursion
 			if (hasBeenSeenBefore(target))
 				return serializedObjects[target];     // return the already proc'ed PK
@@ -414,7 +420,7 @@ namespace SQLiteSerialization {
 					for (uint index = 0; index < arrHolder.Length; index++) {
 						object val = arrHolder.GetValue(index);
 						if (val != null) {		// arrays should never have non-contiguous values, so nulls are just the pre-alloced storage space
-							if (isSimpleValue(val.GetType())) {
+							if (SerializeUtilities.IsSimpleValue(val.GetType())) {
 								arrayDef.AddValues(index, val);
 							} else {
 								arrayDef.AddValues(index, buildComplexObjectTable(val));
@@ -427,7 +433,7 @@ namespace SQLiteSerialization {
 					IEnumerable<object> enumHolder = (IEnumerable<object>)target;
 					uint indexCnt = 0;
 					foreach (object item in enumHolder) {
-						if (isSimpleValue(item.GetType())) {
+						if (SerializeUtilities.IsSimpleValue(item.GetType())) {
 							arrayDef.AddValues(indexCnt, item);
 						} else {
 							arrayDef.AddValues(indexCnt, buildComplexObjectTable(item));
@@ -443,11 +449,11 @@ namespace SQLiteSerialization {
 						object processedValue = dictHolder[key];
 
 						// process the key type
-						if (!isSimpleValue(key.GetType())) {
+						if (!SerializeUtilities.IsSimpleValue(key.GetType())) {
 							processedKey = buildComplexObjectTable(key);
 						}
 						// process the value type
-						if (!isSimpleValue(processedValue.GetType())) {
+						if (!SerializeUtilities.IsSimpleValue(processedValue.GetType())) {
 							processedValue = buildComplexObjectTable(processedValue);
 						}
 
@@ -468,20 +474,6 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Utility Functions
-		protected object createUnintializedObject(Type t,int arrayLength=0) {
-			try {
-				if (t.Name == "String")     // strings need specific handling of all the types in C#
-					return "";
-				else if (t.IsArray)
-					return Array.CreateInstance(t.GetElementType(), arrayLength);
-				else
-					return Activator.CreateInstance(t); // give it a chance...
-			} catch {
-				// ... oh well
-				return FormatterServices.GetUninitializedObject(t);
-			}
-		}
-
 		protected SerializedArray findArray(int uniqueID) {
 			foreach (SerializedArray a in activeArrays) {
 				if (a.UniqueID == uniqueID) {
@@ -499,24 +491,6 @@ namespace SQLiteSerialization {
 
 		protected bool hasBeenSeenBefore(object targetCheck) {
 			return serializedObjects.ContainsKey(targetCheck);
-		}
-
-		protected bool isSimpleValue(Type type) {
-			return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)) || type.IsSubclassOf(typeof(ValueType)));
-		}
-
-		// Is there a better word for "Array-like"? I keep going between Enumerable or Array-like. Iterable?
-		protected bool isArrayLike(Type type) {
-			Type[] genArgs = type.GetGenericArguments();
-			if (genArgs.Length == 0 && type.IsArray && type.BaseType.FullName == "System.Array") {
-				return true;
-			} else if (genArgs.Length == 1 && type.GetInterface(typeof(IEnumerable<>).FullName) != null && !type.IsArray) {
-				return true;
-			} else if (genArgs.Length == 2 && type.GetInterface(typeof(IDictionary<,>).FullName) != null) {
-				return true;
-			}
-
-			return false;
 		}
 		#endregion
 
@@ -557,7 +531,7 @@ namespace SQLiteSerialization {
 		}
 
 		protected object castRawSQLiteArrayVal(string rawValue,Type targetType) {
-			if (isSimpleValue(targetType)) {
+			if (SerializeUtilities.IsSimpleValue(targetType)) {
 				switch (targetType.FullName.ToLower().Trim().Replace("system.", "")) {
 					case "single":
 					case "float":
@@ -600,7 +574,8 @@ namespace SQLiteSerialization {
 					case "time":
 						return DateTime.Parse(rawValue);        // not sure what is going to happen here, catch it in a unit test
 					default:
-						return long.Parse(rawValue);             // this.... should never happen and something bad caused this OR it's an enum?
+						return Convert.ChangeType(rawValue, targetType);
+						//return long.Parse(rawValue);             // this.... should never happen and something bad caused this OR it's an enum?
 				}
 			} else { return Convert.ChangeType(rawValue, typeof(int)); }
 		}
@@ -668,7 +643,7 @@ namespace SQLiteSerialization {
 			while (dr.Read()) {
 				for (int ci=0; ci<dr.FieldCount; ci++) {
 					string colname = dr.GetName(ci);
-					string coltype = colname.Split(new char[] { '_' })[0];
+					string coltype = colname.Split('_')[0];
 					object colval;
 					if (dr.IsDBNull(ci))
 						colval = null;

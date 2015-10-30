@@ -260,15 +260,17 @@ namespace SQLiteSerializerTests {
 		public Single[] arrSingles;
 		public double[] arrDoubles;
 		public string[] arrStrings;
+		public Decimal[] arrDecimals;
 		public char[] arrChars;
 		public DateTime[] arrDates;
 
 		public void Setup() {
 			arrInts = new int[10]{ 1,2,3,4,5,6,7,8,9,10 };
 			arrFloats = new float[10] { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 6.1f, 7.1f, 8.1f, 9.1f, 10.1f };
+			arrDecimals = new Decimal[10] { 1.1M, 2.1M, 3.1M, 4.1M, 5.1M, 6.1M, 7.1M, 8.1M, 9.1M, 10.1M };
 			arrLongs = new long[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 			arrSingles = new Single[10] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-			arrDoubles = new double[10] { 1.1f, 2.1f, 3.1f, 4.1f, 5.1f, 6.1f, 7.1f, 8.1f, 9.1f, 10.1f };
+			arrDoubles = new double[10] { 1.1d, 2.1d, 3.1d, 4.1d, 5.1d, 6.1d, 7.1d, 8.1d, 9.1d, 10.1d };
 			arrStrings = new string[10] { "one","two","three","four","five","six","seven","eight","nine","ten" };
 			arrChars = new char[10] { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j' };
 			arrDates = new DateTime[10] {
@@ -294,8 +296,9 @@ namespace SQLiteSerializerTests {
 				arrInts.OrderBy(a => a).SequenceEqual(other.arrInts.OrderBy(a => a))
 				//&& arrFloats.OrderBy(a => a).SequenceEqual(other.arrFloats.OrderBy(a => a))		// as we all know, floats are a bitch
 				&& arrLongs.OrderBy(a => a).SequenceEqual(other.arrLongs.OrderBy(a => a))
+				&& arrDecimals.OrderBy(a => a).SequenceEqual(other.arrDecimals.OrderBy(a => a))
 				&& arrSingles.OrderBy(a => a).SequenceEqual(other.arrSingles.OrderBy(a => a))
-				//&& arrDoubles.OrderBy(a => a).SequenceEqual(other.arrDoubles.OrderBy(a => a))
+				&& arrDoubles.OrderBy(a => a).SequenceEqual(other.arrDoubles.OrderBy(a => a))
 				&& arrStrings.OrderBy(a => a).SequenceEqual(other.arrStrings.OrderBy(a => a))
 				&& arrChars.OrderBy(a => a).SequenceEqual(other.arrChars.OrderBy(a => a))
 				&& arrDates.OrderBy(a => a).SequenceEqual(other.arrDates.OrderBy(a => a))

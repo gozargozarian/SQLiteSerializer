@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -21,15 +22,15 @@ namespace SQLiteSerialization {
 		public static string MakeSafeSQLType(string sqlType) {
 			StringBuilder typename = new StringBuilder( CleanTypeNameFromString(sqlType) );
 			if (sqlType.Contains('`')) {
-				string genericString = sqlType.Split(new char[] { '`' })[1];
-				int genericsCount = int.Parse(genericString.Split(new char[] { '[' })[0]);
-				typename.AppendFormat("_{0}", genericsCount);
+				string genericString = sqlType.Split('`')[1];
+				int genericsCount = int.Parse((genericString.Contains("+") ? genericString.Split('+')[0] : genericString.Split('[')[0]));
+				typename.AppendFormat("_{0}", genericString.Split('[')[0].Replace("+",""));
 
 				genericString = genericString.Replace("[[", "[").Replace("]]", "]");
 				string[] generics = genericString.Split(new char[] { '[',']' },StringSplitOptions.RemoveEmptyEntries);
 				for (int index=1; index <= genericsCount; index++) {
 					if (generics[index] == ",") continue;
-					string subtypename = generics[index].Split(new char[] { ',' })[0];
+					string subtypename = generics[index].Split(',')[0];
                     typename.AppendFormat("_{0}", MakeSafeSQLType(subtypename));
 				}
             }
@@ -38,10 +39,58 @@ namespace SQLiteSerialization {
         }
 		#endregion
 
+		#region Type Detection
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsSystemArrayLike(Type arraylikeType) {
+			return (arraylikeType.IsArray && (arraylikeType.BaseType.FullName == "System.Array" || arraylikeType.IsAssignableFrom(typeof(Array))));
+        }
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsListLike(Type listLikeType) {
+			// NOTE: this method doesn't detect ancestor inheritance of List for a reason
+			return (listLikeType.GetGenericArguments().Length == 1 && listLikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !listLikeType.IsArray);
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsDictionaryLike(Type dictLikeType) {
+			// NOTE: this method doesn't detect ancestor inheritance of Dictionary for a reason
+			return (dictLikeType.GetGenericArguments().Length == 2 && dictLikeType.GetInterface(typeof(IDictionary<,>).FullName) != null);
+		}
+		public static bool IsArrayLike(Type type) {
+			return (IsSystemArrayLike(type) || IsListLike(type) || IsDictionaryLike(type));
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static bool IsSimpleValue(Type type) {
+			// || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) return IsSimple(type.GetGenericArguments()[0])
+			if (type.IsGenericType)
+				if (type.GetGenericTypeDefinition() == typeof(Nullable<>))
+					return IsSimpleValue(type.GetGenericArguments()[0]);
+				else
+					return false;
+			else
+				return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)));    //|| type.Equals(typeof(DateTime))
+		}
+		#endregion
+
 		#region Reflection Helpers
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static object CreateUninitializedObject(Type t,int arrayLength=0) {
+			//if (t.IsAbstract) return null;
+			try {
+				if (t.Name == "String")     // strings need specific handling of all the types in C#
+					return "";
+				else if (t.IsArray)
+					return Array.CreateInstance(t.GetElementType(), arrayLength);
+				else
+					return Activator.CreateInstance(t); // give it a chance...
+			} catch {
+				// ... oh well
+				return FormatterServices.GetUninitializedObject(t);
+			}
+		}
+
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string CleanTypeNameFromString(string typeName) {
-			return typeName.Replace(".", "_").Replace("<", "").Replace(">", "").Split(new char[] { '`' })[0];
+			return typeName.Replace(".", "_").Replace("<", "").Replace(">", "").Split('`')[0];
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

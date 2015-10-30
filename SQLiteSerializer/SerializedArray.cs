@@ -51,16 +51,16 @@ namespace SQLiteSerialization {
 			linkedItems = new List<SerializedArrayItem>();
 
 			Type[] genArgs = arraylikeType.GetGenericArguments();
-			if (genArgs.Length == 0 && arraylikeType.IsArray && arraylikeType.BaseType.FullName == "System.Array") {
+			if (SerializeUtilities.IsSystemArrayLike(arraylikeType)) {
 				serializeHandling = LinearObjectType.SystemArray;       // your basic array
 				keyType = typeof(uint);
 				valueType = arraylikeType.GetElementType();
-            } else if (genArgs.Length == 1 && arraylikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !arraylikeType.IsArray) {
+            } else if (SerializeUtilities.IsListLike(arraylikeType)) {
 				//.IsAssignableFrom(typeof(IEnumerable<>))
 				serializeHandling = LinearObjectType.IEnumerableFamily;
 				keyType = typeof(uint);
 				valueType = genArgs[0];
-			} else if (genArgs.Length == 2 && arraylikeType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
+			} else if (SerializeUtilities.IsDictionaryLike(arraylikeType)) {
 				//.IsAssignableFrom(typeof(IDictionary<,>))
 				serializeHandling = LinearObjectType.IDictionaryFamily;
 				keyType = genArgs[0];
