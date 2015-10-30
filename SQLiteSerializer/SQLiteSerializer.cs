@@ -413,10 +413,12 @@ namespace SQLiteSerialization {
 					Array arrHolder = (Array)target;
 					for (uint index = 0; index < arrHolder.Length; index++) {
 						object val = arrHolder.GetValue(index);
-						if (isSimpleValue(val.GetType())) {
-							arrayDef.AddValues(index, val);
-						} else {
-							arrayDef.AddValues(index, buildComplexObjectTable(val));
+						if (val != null) {		// arrays should never have non-contiguous values, so nulls are just the pre-alloced storage space
+							if (isSimpleValue(val.GetType())) {
+								arrayDef.AddValues(index, val);
+							} else {
+								arrayDef.AddValues(index, buildComplexObjectTable(val));
+							}
 						}
 					}
 					break;
