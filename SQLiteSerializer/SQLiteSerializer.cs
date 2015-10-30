@@ -190,6 +190,7 @@ namespace SQLiteSerialization {
 					FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
                     foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
+						//if (col == null) continue;		// WARNING: Research this!
                         object val = col.columnValue;
 						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
@@ -391,10 +392,12 @@ namespace SQLiteSerialization {
 				// Condition 5: Complex Sub-Component
 			} else {
 				// this is a complex type (a class or something), so recurse
-				int FK = buildComplexObjectTable(field.GetValue(parentObj));   // we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
+				//if (!fieldType.Name.Contains("IEqualityComparer`1")) {		// WARNING: Research this!
+					int FK = buildComplexObjectTable(field.GetValue(parentObj));   // we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
 
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
-				table.AddColumn(col);
+					SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+					table.AddColumn(col);
+				//}
 			}
 		}
 
