@@ -7,6 +7,7 @@ namespace SQLiteSerializerTests {
 		public SimpleSerializationTests() : base() { }
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_ValueStringSerializationTest() {
 			string test = "This is a test";
 			MyTestSerializeRun(test);
@@ -16,6 +17,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_ValueIntSerializationTest() {
 			int test = 400;
 			MyTestSerializeRun(test);
@@ -25,6 +27,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_ClassSerializationTest() {
 			SimpleTest test = new SimpleTest();
 			test.Setup();
@@ -36,6 +39,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Complex Tests")]
 		public void Complex_ClassSerializationTest() {
 			ComplexTest test = new ComplexTest();
 			test.Setup();
@@ -47,6 +51,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Complex Tests")]
 		public void Complex_SameClassMultiplesTest() {
 			MultiSameClass test = new MultiSameClass();
 			test.stest1 = new SimpleTest();
@@ -61,6 +66,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_NullClassMultiplesTest() {
 			MultiSameClass test = new MultiSameClass();
 			test.stest1 = null;
@@ -74,6 +80,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_SimilarVarNamesTest() {
 			SimilarVarClass test = new SimilarVarClass();
 			test.Setup();
@@ -85,6 +92,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Complex Tests")]
 		public void Complex_SameClassMultipleRefsTest() {
 			SameRefsClass test = new SameRefsClass();
 			test.Setup();
@@ -98,6 +106,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Simple Tests")]
 		public void Simple_PropertiesTest() {
 			SimplePropertiesClass test = new SimplePropertiesClass();
 			test.Setup();
@@ -112,6 +121,7 @@ namespace SQLiteSerializerTests {
 			There would need to be a way of marking this and specifically handling it
 		***/
 		[TestMethod]
+		[TestCategory("Special (Possibly Not Supported)")]
 		public void Special_TypesDynamicTest() {
 			dynamic test = new { @something="another",@test=42 };
 			MyTestSerializeRun(test);
@@ -121,6 +131,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Special (Possibly Not Supported)")]
 		public void Special_TypesManyDynamicsTest() {
 			List<dynamic> test = new List<dynamic>();
 			dynamic thing = new { @something = "another", @test = 42 };

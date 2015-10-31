@@ -3,6 +3,7 @@ using System.Text;
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Reflection;
+using System.Runtime.Serialization;
 
 namespace SQLiteSerializerTests {
 	/// <summary>
@@ -46,6 +47,7 @@ namespace SQLiteSerializerTests {
 		#endregion
 
 		[TestMethod]
+		[TestCategory("Stupid Stuff")]
 		public void StupidStuff_StringFormattingTest() {
 			// I just needed to see if you could replace one argument multiple times
 			string thing = "dog";
@@ -55,6 +57,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_PropertiesTest() {
 			Garbage test = new Garbage();
 
@@ -65,6 +68,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_FieldsTest() {
 			Garbage test = new Garbage();
 
@@ -75,6 +79,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_SetPrivatesTest() {
 			Garbage test = new Garbage();
 
@@ -92,6 +97,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_SetAllFieldsTest() {
 			Garbage test = new Garbage();
 
@@ -109,6 +115,32 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
+		public void Reflection_RealSerializationMethods() {
+			Dictionary<int, string> test = new Dictionary<int, string>();
+			for (int i = 0; i < 10; i++) {
+				test.Add(i, "This is item #" + i);
+			}
+			MemberInfo[] info = FormatterServices.GetSerializableMembers(test.GetType());
+			object[] values = FormatterServices.GetObjectData(test, info);
+
+			Assert.IsTrue(values.Length == 10);
+		}
+
+		[TestMethod]
+		[TestCategory("Reflection")]
+		public void Reflection_RealSerializationMethodsWithInheritance() {
+			MyVeryOwnDictionary test = new MyVeryOwnDictionary();
+			test.Setup();
+
+			MemberInfo[] info = FormatterServices.GetSerializableMembers(test.GetType());
+			object[] values = FormatterServices.GetObjectData(test, info);
+
+			Assert.IsTrue(values.Length == 12);
+		}
+
+		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_WhatIsASystemArrayTest() {
 			string[] strArr = new string[50];
 			int[] intArr = new int[25];
@@ -132,6 +164,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_InheritanceFields() {
 			Type t = typeof(InheritedSimpleTest);
 			FieldInfo[] fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
@@ -141,6 +174,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_BaseObjectDetection() {
 			BaseTest test = new BaseTest();
 			Assert.IsTrue(test.GetType().BaseType == typeof(object));
@@ -160,6 +194,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_ArrayAndGenericCastingTest() {
 			int[] test = new int[5] { 1, 2, 3, 4, 5 };		// just to compare
 			int[] target = helperTest<int[]>();

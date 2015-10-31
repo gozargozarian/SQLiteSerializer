@@ -9,6 +9,7 @@ namespace SQLiteSerializerTests {
 
 		#region System.Array Tests
 		[TestMethod]
+		[TestCategory("Arrays")]
 		public void Array_BasicSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
@@ -19,6 +20,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Arrays")]
 		public void Array_ArrayOfObjectsSerializationTest() {
 			ComplexArrayContainer cont = new ComplexArrayContainer();
 			cont.Setup();
@@ -29,6 +31,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Arrays")]
 		public void Array_StandaloneSerializationTest() {
 			SimpleArrayContainer cont = new SimpleArrayContainer();
 			cont.Setup();
@@ -39,11 +42,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		public void Array_ArrayWithinArraySerializationTest() {
-
-		}
-
-		[TestMethod]
+		[TestCategory("Arrays")]
 		public void Array_MultidimensionalArrayTest() {
 			string[,] test = new string[2,2] { { "blah", "barg" }, { "eek", "scream" } };
 			MyTestSerializeRun(test);
@@ -57,6 +56,7 @@ namespace SQLiteSerializerTests {
         }
 
 		[TestMethod]
+		[TestCategory("Arrays")]
 		public void Array_DifferentArrayTypesTest() {
 			DifferentArrayTypes test = new DifferentArrayTypes();
 			test.Setup();
@@ -70,6 +70,7 @@ namespace SQLiteSerializerTests {
 
 		#region IList Tests
 		[TestMethod]
+		[TestCategory("Lists")]
 		public void List_SerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
@@ -80,6 +81,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Lists")]
 		public void List_ListOfObjectsSerializationTest() {
 			ComplexListContainer cont = new ComplexListContainer();
 			cont.Setup();
@@ -90,6 +92,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Lists")]
 		public void List_StandaloneSerializationTest() {
 			SimpleListContainer cont = new SimpleListContainer();
 			cont.Setup();
@@ -98,15 +101,11 @@ namespace SQLiteSerializerTests {
 			List<string> result = MyTestDeserializeRun<List<string>>();
 			Assert.IsTrue((result.OrderBy(a => a).SequenceEqual(cont.strs.OrderBy(a => a))));
 		}
-
-		[TestMethod]
-		public void List_ListWithinListSerializationTest() {
-
-		}
 		#endregion
 
 		#region IDictionary Tests
 		[TestMethod]
+		[TestCategory("Dictionaries")]
 		public void Dictionary_SerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
@@ -117,6 +116,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Dictionaries")]
 		public void Dictionary_DictionaryOfObjectsSerializationTest() {
 			ComplexDictionaryContainer cont = new ComplexDictionaryContainer();
 			cont.Setup();
@@ -127,6 +127,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Dictionaries")]
 		public void Dictionary_DictionaryOfArrayKeysSerializationTest() {
 			ArrayKeyDictionaryContainer cont = new ArrayKeyDictionaryContainer();
 			cont.Setup();
@@ -137,6 +138,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Dictionaries")]
 		public void Dictionary_DictionaryOfObjectsKeysOfObjectsSerializationTest() {
 			VeryComplexDictionaryContainer cont = new VeryComplexDictionaryContainer();
 			cont.Setup();
@@ -147,6 +149,7 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
+		[TestCategory("Dictionaries")]
 		public void Dictionary_StandaloneSerializationTest() {
 			SimpleDictionaryContainer cont = new SimpleDictionaryContainer();
 			cont.Setup();
@@ -154,11 +157,6 @@ namespace SQLiteSerializerTests {
 
 			Dictionary<string,uint> result = MyTestDeserializeRun<Dictionary<string, uint>>();
 			Assert.IsTrue(result.ContentEquals(cont.strs));
-		}
-
-		[TestMethod]
-		public void Dictionary_DictionaryWithinDictionarySerializationTest() {
-
 		}
 		#endregion
 	}

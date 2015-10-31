@@ -334,7 +334,6 @@ namespace SQLiteSerialization {
 			//	throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");
 
 			// can't handle this because it is doomed to become abstract
-			if (localType.IsAbstract) return -1;
 			if (SerializeUtilities.IsArrayLike(localType))
 				return buildArrayTable(target);
 
@@ -352,7 +351,10 @@ namespace SQLiteSerialization {
 
 				foreach (FieldInfo field in fields) {
 					Type fieldType = field.FieldType;
-					serializeSubObject(table, fieldType, field, target);
+					//if (!fieldType.IsAbstract)  //field.GetValue(target).GetType()	- There is an important difference between the storage type and what is really stored here.
+					// TODO: Having huge issue with something inherited from an abstract class, but variable type is labeled as the abstract type
+					//	expecting the inherited types being stored there.  Serializer attempts to store abstract with the inherited class data.
+						serializeSubObject(table, fieldType, field, target);
 				}
 			}
 
