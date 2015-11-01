@@ -171,7 +171,50 @@ namespace SQLiteSerializerTests {
 			Assert.AreEqual(fi.GetValue(privItem), "Test Complete");
 		}
 
+		[TestMethod]
+		[TestCategory("Reflection")]
+		public void Reflection_NestedPrivateClassSetFieldsDotNetBug() {
+			Dictionary<int, string> test = new Dictionary<int, string>();
 
+			Type fst = test.GetType();
+			Type privStorageItemType = fst.GetField("entries", BindingFlags.NonPublic | BindingFlags.Instance).FieldType;     // fst.GetNestedType("FakeStorageItem");
+
+			bool passed = (bool)this.GetType().GetMethod("NestedPrivateClassSetFieldsBUGGED",
+						BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+					.MakeGenericMethod(new Type[] { privStorageItemType.GetElementType() })
+					.Invoke(this,new object[] { });
+			Assert.IsFalse(passed);		// this should have been True; highlights a bug
+
+			bool passed2 = (bool)this.GetType().GetMethod("NestedPrivateClassSetFieldsCORRECT",
+						BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+					.MakeGenericMethod(new Type[] { privStorageItemType.GetElementType() })
+					.Invoke(this, new object[] { });
+			Assert.IsTrue(passed2);     // this is correct
+		}
+        public bool NestedPrivateClassSetFieldsBUGGED<T>() {
+			// BUG: Creating an instance of a nested private class from a public class is not normal, but can be done with Reflection
+			//	if you do so in the correct manner. This is also perfectly valid for serialization situations.
+			//	However, the bug is, if you store the "Uninitialized nested private object" into a Generic container it loses its
+			//	"writability". The object exists, but doesn't allow reflection to set it.
+			//	If you store it into an object, then it works fine.
+			T privItem = (T)FormatterServices.GetUninitializedObject(typeof(T));			// does NOT work, unexpected behavior
+			FieldInfo fi = privItem.GetType().GetField("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			fi.SetValue(privItem, "Test Complete");
+
+			return ((string)fi.GetValue(privItem) == "Test Complete");
+		}
+		public bool NestedPrivateClassSetFieldsCORRECT<T>() {
+			// BUG: Creating an instance of a nested private class from a public class is not normal, but can be done with Reflection
+			//	if you do so in the correct manner. This is also perfectly valid for serialization situations.
+			//	However, the bug is, if you store the "Uninitialized nested private object" into a Generic container it loses its
+			//	"writability". The object exists, but doesn't allow reflection to set it.
+			//	If you store it into an object, then it works fine.
+			object privItem = (T)FormatterServices.GetUninitializedObject(typeof(T));		// works CORRECTLY
+			FieldInfo fi = privItem.GetType().GetField("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			fi.SetValue(privItem, "Test Complete");
+
+			return ((string)fi.GetValue(privItem) == "Test Complete");
+		}
 
 		[TestMethod]
 		[TestCategory("Reflection")]
