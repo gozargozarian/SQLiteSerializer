@@ -141,6 +141,40 @@ namespace SQLiteSerializerTests {
 
 		[TestMethod]
 		[TestCategory("Reflection")]
+		public void Reflection_NestedPrivateClassSetFields() {
+			FakeStorage<int,string> test = new FakeStorage<int, string>();
+			test.Setup();
+
+			Type fst = test.GetType();
+			Type privStorageItemType = fst.GetField("items", BindingFlags.NonPublic | BindingFlags.Instance).FieldType;     // fst.GetNestedType("FakeStorageItem");
+
+			//Activator.CreateInstance(privStorageItemType.GetElementType());
+			object privItem = FormatterServices.GetUninitializedObject(privStorageItemType.GetElementType());
+			FieldInfo fi = privItem.GetType().GetField("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			fi.SetValue(privItem, "Test Complete");
+
+			Assert.AreEqual( fi.GetValue(privItem), "Test Complete");
+		}
+
+		[TestMethod]
+		[TestCategory("Reflection")]
+		public void Reflection_NestedPrivateClassSetFieldsDictionarySpecific() {
+			Dictionary<int,string> test = new Dictionary<int, string>();
+
+			Type fst = test.GetType();
+			Type privStorageItemType = fst.GetField("entries", BindingFlags.NonPublic | BindingFlags.Instance).FieldType;     // fst.GetNestedType("FakeStorageItem");
+
+			object privItem = FormatterServices.GetUninitializedObject(privStorageItemType.GetElementType());
+			FieldInfo fi = privItem.GetType().GetField("value", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			fi.SetValue(privItem, "Test Complete");
+
+			Assert.AreEqual(fi.GetValue(privItem), "Test Complete");
+		}
+
+
+
+		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_WhatIsASystemArrayTest() {
 			string[] strArr = new string[50];
 			int[] intArr = new int[25];

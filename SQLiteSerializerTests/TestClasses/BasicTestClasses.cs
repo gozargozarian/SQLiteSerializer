@@ -168,4 +168,20 @@ namespace SQLiteSerializerTests {
             );
 		}
 	}
+
+	[Serializable]
+	public class FakeStorage<TKey,TValue> {
+		private struct FakeStorageItem {
+			public TKey index;
+			public TValue value;
+		}
+		private FakeStorageItem[] items;
+
+		public FakeStorage() { }
+		public void Setup() {
+			items = (FakeStorageItem[])Array.CreateInstance(typeof(FakeStorageItem), 10);
+
+			// don't worry about setting things
+		}
+	}
 }

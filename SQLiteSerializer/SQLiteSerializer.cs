@@ -12,7 +12,7 @@ using System.Collections;
 
 namespace SQLiteSerialization {
 	public class SQLiteSerializer {
-		public static string Version = "1.0.3b";
+		public static string Version = "1.0.4b";
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
 
@@ -181,16 +181,17 @@ namespace SQLiteSerialization {
 			if (tablename == ArrayTableName) {
 				return readAllArrayEntries<T>(UID);
 			} else {
-				T container = (T)SerializeUtilities.CreateUninitializedObject(typeof(T));
+				object container = SerializeUtilities.CreateUninitializedObject(localType);
+				if (localType.IsAbstract) return (T)container;
 				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
 				if (SerializeUtilities.IsSimpleValue(localType)) {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
-                    container = (T)Convert.ChangeType(val,typeof(T));
+                    container = (T)Convert.ChangeType(val, localType);
                 } else {
 					FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
                     foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
-						//if (col == null) continue;		// WARNING: Research this!
+						if (col == null) continue;		// TODO: WARNING: Research this!
                         object val = col.columnValue;
 						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
@@ -202,14 +203,17 @@ namespace SQLiteSerialization {
 								deserializedObjects.Add((long)col.columnValue, val);
 							} else { val = deserializedObjects[(long)col.columnValue]; }
                         }
+						//localType.InvokeMember("next", BindingFlags.SetField | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, container, new object[] { val });
 						if (field.FieldType.IsEnum)
 							field.SetValue(container, Enum.ToObject(field.FieldType, val));
 						else
-							field.SetValue(container, Convert.ChangeType(val, field.FieldType));
+							field.SetValue(container, Convert.ChangeType(val, field.FieldType),
+								BindingFlags.SetField | BindingFlags.FlattenHierarchy | BindingFlags.PutRefDispProperty | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
+								Type.DefaultBinder,System.Globalization.CultureInfo.CurrentCulture);
 					}
 				}
 
-				return container;
+				return (T)container;
 			}
 		}
 
@@ -372,6 +376,10 @@ namespace SQLiteSerialization {
 			// TODO: Reduce these into one
 				// Condition 2: Dictionaries
 			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
+				/*var dictionaryType = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
+				var keysProperty = dictionaryType.GetProperty("Keys");
+				var keys = ((IEnumerable)keysProperty.GetValue(item)).OfType<object>().Select(k => k.ToString()).ToArray<string>();*/
+
 				// make a dict entry
 				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
