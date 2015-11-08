@@ -5,10 +5,16 @@ namespace SQLiteSerialization {
 	public class SerializedObjectColumn : IEquatable<SerializedObjectColumn> {
 		// TODO: Find a way to make MakeSafeSQLType() faster. It is hit many times. Store a "dirty" flag and the cached typename
 		public string columnName { get; set; }
-		public string columnType { get; set; }
 		public object columnValue { get; set; }
 
-		public string columnTypeSQLSafe { get { return SerializeUtilities.MakeSafeSQLType(columnType); } }
+		private string _columnType;
+		private string _columnTypeSQLSafe;
+		public string columnType {
+			get { return _columnType; }
+			set { _columnType = value; _columnTypeSQLSafe = SerializeUtilities.MakeSafeSQLType(value); }
+		}
+		public string columnTypeSQLSafe { get { return _columnTypeSQLSafe; } }
+
         public string sqlName {
 			get {
 				return sqlShortName + SerializeUtilities.MakeSafeColumn(columnName);
@@ -127,25 +133,28 @@ namespace SQLiteSerialization {
 	public class SerializedObjectTableRow {
 		protected int serializedID;
 		protected string tablename;
+		private string tablenameSQLSafe;
 		protected string assemblyQualifiedName;
 		protected List<SerializedObjectColumn> columns;
 
 		public int UniqueID { get { return serializedID; } }
 		public string TableName { get { return tablename; } }
+		public string TableNameSQL { get { return tablenameSQLSafe; } }
 		public string ObjectType { get { return assemblyQualifiedName; } }
-		public string TableNameSQL { get { return SerializeUtilities.MakeSafeSQLType(tablename); } }
         public List<SerializedObjectColumn> Columns { get { return columns; } }
 
 		public SerializedObjectTableRow(int serializedID, Type objectType) {
 			this.serializedID = serializedID;
 			this.tablename = objectType.FullName;
-			this.assemblyQualifiedName = objectType.AssemblyQualifiedName;
+			this.tablenameSQLSafe = SerializeUtilities.MakeSafeSQLType(tablename);
+            this.assemblyQualifiedName = objectType.AssemblyQualifiedName;
             columns = new List<SerializedObjectColumn>();
 		}
 
 		public SerializedObjectTableRow(int serializedID, string tablename) {
 			this.serializedID = serializedID;
 			this.tablename = this.assemblyQualifiedName = tablename;
+			this.tablenameSQLSafe = SerializeUtilities.MakeSafeSQLType(tablename);
 			columns = new List<SerializedObjectColumn>();
 		}
 
