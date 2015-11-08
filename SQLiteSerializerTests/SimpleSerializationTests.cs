@@ -118,7 +118,8 @@ namespace SQLiteSerializerTests {
 		}
 
 		/*** TODO: Dynamics may never be supported because the properties of the type are unknown at deserialization time.
-			There would need to be a way of marking this and specifically handling it
+			There would need to be a way of marking this and specifically handling it.
+			Something I did with Inheritence serialization fixed dynamics... Wut?!
 		***/
 		[TestMethod]
 		[TestCategory("Special (Possibly Not Supported)")]

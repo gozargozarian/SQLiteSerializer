@@ -12,7 +12,7 @@ using System.Collections;
 
 namespace SQLiteSerialization {
 	public class SQLiteSerializer {
-		public static string Version = "1.0.4b";
+		public static string Version = "1.0.5b";
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
 
@@ -27,7 +27,7 @@ namespace SQLiteSerialization {
 		protected Dictionary<object,int> serializedObjects = new Dictionary<object,int>(0);					// list of objects with their UIDs in order seen
 
 		// Deserialize vars
-		protected Dictionary<int, string> serialTable;
+		protected Dictionary<long, SerialObjectsDefintion> serialTable;
 		protected Dictionary<long, object> deserializedObjects = new Dictionary<long, object>(0);
 
 		#region Main Serialization Functions
@@ -41,7 +41,7 @@ namespace SQLiteSerialization {
 			activeArrays = new List<SerializedArray>(0);
 			serializedObjects = new Dictionary<object,int>(0);
 
-			serialTable = new Dictionary<int, string>(0);
+			serialTable = new Dictionary<long, SerialObjectsDefintion>(0);
 			deserializedObjects = new Dictionary<long, object>(0);
         }
 
@@ -114,7 +114,7 @@ namespace SQLiteSerialization {
 				if (isArrayTable) {
 					int UIDParamNo = -1;
 					SerializedArray sarr = findArray(table.UniqueID);
-					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}",new object[] { sarr.UniqueID, ArrayTableName, table.TableName, Environment.NewLine, SerialInfoTableName});
+					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}",new object[] { sarr.UniqueID, ArrayTableName, table.ObjectType, Environment.NewLine, SerialInfoTableName});
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
 					UIDParamNo = bindParams.Count;
@@ -136,7 +136,7 @@ namespace SQLiteSerialization {
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
                 } else {
-					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}", new object[] { table.UniqueID, table.TableNameSQL, table.TableName, Environment.NewLine, SerialInfoTableName });
+					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}", new object[] { table.UniqueID, table.TableNameSQL, table.ObjectType, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
 					insertColDef.Append("(UID");
 					insertColValue.Append("(@v" + bindParams.Count);
@@ -175,14 +175,14 @@ namespace SQLiteSerialization {
 		}
 
 		protected T readSQLTableToObject<T>(int UID=1) {
-			string tablename = serialTable[UID];
-            Type localType = typeof(T);
+			string tablename = serialTable[UID].tablename;
+			Type localType = serialTable[UID].storageType;	 //typeof(T); - bug, using the type of the definition broke inherited objects
 
 			if (tablename == ArrayTableName) {
 				return readAllArrayEntries<T>(UID);
 			} else {
 				object container = SerializeUtilities.CreateUninitializedObject(localType);
-				if (localType.IsAbstract) return (T)container;
+
 				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
 				if (SerializeUtilities.IsSimpleValue(localType)) {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
@@ -193,7 +193,10 @@ namespace SQLiteSerialization {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
 						if (col == null) continue;		// TODO: WARNING: Research this!
                         object val = col.columnValue;
+						Type castableType = field.FieldType;
 						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
+							if (serialTable.ContainsKey((long)col.columnValue)) { castableType = serialTable[(long)col.columnValue].storageType ?? field.FieldType; }
+							
 							if (!deserializedObjects.ContainsKey((long)col.columnValue)) {
 								val = SerializeUtilities.CallGenericMethodWithReflection(
 									this, "readSQLTableToObject",
@@ -207,9 +210,7 @@ namespace SQLiteSerialization {
 						if (field.FieldType.IsEnum)
 							field.SetValue(container, Enum.ToObject(field.FieldType, val));
 						else
-							field.SetValue(container, Convert.ChangeType(val, field.FieldType),
-								BindingFlags.SetField | BindingFlags.FlattenHierarchy | BindingFlags.PutRefDispProperty | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-								Type.DefaultBinder,System.Globalization.CultureInfo.CurrentCulture);
+							field.SetValue(container, Convert.ChangeType(val, castableType));
 					}
 				}
 
@@ -346,7 +347,7 @@ namespace SQLiteSerialization {
 			
 			//localType.Module	- TODO: add this to info tables
 			//localType.AssemblyQualifiedName	- TODO: add this to info tables
-			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType.FullName);
+			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType);
 
 			if (SerializeUtilities.IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
 				table.AddColumn(new SerializedObjectColumn("__value__", localType.FullName, target));
@@ -530,14 +531,20 @@ namespace SQLiteSerialization {
 			globalConn.Close();
 		}
 
-		protected Dictionary<int,string> readSerialSQLTable() {
-			Dictionary<int, string> serialTable = new Dictionary<int, string>();
-            string sql = string.Format("SELECT UID,location FROM {0} ORDER BY UID", SerialInfoTableName);
+		protected Dictionary<long, SerialObjectsDefintion> readSerialSQLTable() {
+			Dictionary<long, SerialObjectsDefintion> serialTable = new Dictionary<long, SerialObjectsDefintion>();
+            string sql = string.Format("SELECT UID,location,typename FROM {0} ORDER BY UID", SerialInfoTableName);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 
 			while (dr.Read()) {
-				serialTable.Add( Convert.ToInt32(dr["UID"]), Convert.ToString(dr["location"]));
+				serialTable.Add(Convert.ToInt64(dr["UID"]),
+								new SerialObjectsDefintion(
+									Convert.ToInt32(dr["UID"]),
+									Convert.ToString(dr["location"]),
+									Convert.ToString(dr["typename"])
+								)
+							);
 			}
 
 			return serialTable;

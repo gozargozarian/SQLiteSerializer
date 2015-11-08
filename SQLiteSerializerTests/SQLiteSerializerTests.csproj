@@ -128,6 +128,7 @@
   <Target Name="AfterClean">
     <Message Text="Cleaning Unit Test SQLite databases..." />
     <Exec Command="del $(OutDir)\*.db /F /Q" />
+    <Exec Command="del $(OutDir)\*.db-journal /F /Q" />
   </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

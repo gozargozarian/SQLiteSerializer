@@ -127,21 +127,44 @@ namespace SQLiteSerialization {
 	public class SerializedObjectTableRow {
 		protected int serializedID;
 		protected string tablename;
+		protected string assemblyQualifiedName;
 		protected List<SerializedObjectColumn> columns;
 
 		public int UniqueID { get { return serializedID; } }
 		public string TableName { get { return tablename; } }
+		public string ObjectType { get { return assemblyQualifiedName; } }
 		public string TableNameSQL { get { return SerializeUtilities.MakeSafeSQLType(tablename); } }
         public List<SerializedObjectColumn> Columns { get { return columns; } }
 
+		public SerializedObjectTableRow(int serializedID, Type objectType) {
+			this.serializedID = serializedID;
+			this.tablename = objectType.FullName;
+			this.assemblyQualifiedName = objectType.AssemblyQualifiedName;
+            columns = new List<SerializedObjectColumn>();
+		}
+
 		public SerializedObjectTableRow(int serializedID, string tablename) {
 			this.serializedID = serializedID;
-			this.tablename = tablename;
+			this.tablename = this.assemblyQualifiedName = tablename;
 			columns = new List<SerializedObjectColumn>();
 		}
 
 		public void AddColumn(SerializedObjectColumn colDef) {
 			columns.Add(colDef);
+		}
+	}
+
+	public struct SerialObjectsDefintion {
+		public int UID;
+		public string tablename;
+		public string typename;
+		public Type storageType;
+
+		public SerialObjectsDefintion(int UID,string tablename,string typename) {
+			this.UID = UID;
+			this.tablename = tablename;
+			this.typename = typename;
+			this.storageType = Type.GetType(typename);
 		}
 	}
 }
