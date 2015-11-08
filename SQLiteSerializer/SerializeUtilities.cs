@@ -46,12 +46,12 @@ namespace SQLiteSerialization {
         }
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsListLike(Type listLikeType) {
-			// NOTE: this method doesn't detect ancestor inheritance of List for a reason
+			// NOTE: this method doesn't detect ancestor inheritance of List for a specific reason
 			return (listLikeType.GetGenericArguments().Length == 1 && listLikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !listLikeType.IsArray);
 		}
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsDictionaryLike(Type dictLikeType) {
-			// NOTE: this method doesn't detect ancestor inheritance of Dictionary for a reason
+			// NOTE: this method doesn't detect ancestor inheritance of Dictionary for a specific reason
 			return (dictLikeType.GetGenericArguments().Length == 2 && dictLikeType.GetInterface(typeof(IDictionary<,>).FullName) != null);
 		}
 		public static bool IsArrayLike(Type type) {

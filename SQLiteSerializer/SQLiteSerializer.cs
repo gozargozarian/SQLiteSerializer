@@ -356,10 +356,7 @@ namespace SQLiteSerialization {
 
 				foreach (FieldInfo field in fields) {
 					Type fieldType = field.FieldType;
-					//if (!fieldType.IsAbstract)  //field.GetValue(target).GetType()	- There is an important difference between the storage type and what is really stored here.
-					// TODO: Having huge issue with something inherited from an abstract class, but variable type is labeled as the abstract type
-					//	expecting the inherited types being stored there.  Serializer attempts to store abstract with the inherited class data.
-						serializeSubObject(table, fieldType, field, target);
+					serializeSubObject(table, fieldType, field, target);
 				}
 			}
 
@@ -373,42 +370,23 @@ namespace SQLiteSerialization {
 				// we can store this raw
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, field.GetValue(parentObj));
 				table.AddColumn(col);
-			
-			// TODO: Reduce these into one
+			} else if (SerializeUtilities.IsArrayLike(field.FieldType)) {
 				// Condition 2: Dictionaries
-			} else if (field.FieldType.GetInterface(typeof(IDictionary<,>).FullName) != null) {
-				/*var dictionaryType = typeof(IDictionary<,>).MakeGenericType(keyType, valueType);
-				var keysProperty = dictionaryType.GetProperty("Keys");
-				var keys = ((IEnumerable)keysProperty.GetValue(item)).OfType<object>().Select(k => k.ToString()).ToArray<string>();*/
-
-				// make a dict entry
-				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
-				table.AddColumn(col);
-
 				// Condition 3: Handle Enumerable collections like List<>, but not core system arrays
-			} else if (field.FieldType.GetInterface(typeof(IEnumerable<>).FullName) != null && !fieldType.IsArray) {
-				// make an Enumerable entry
-				int FK = buildArrayTable(field.GetValue(parentObj));            // fieldType.FullName
-				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
-				table.AddColumn(col);
-
 				// Condition 4: System Arrays
-			} else if (fieldType.IsArray) {
-				// make a base array entry
-				int FK = buildArrayTable(field.GetValue(parentObj));		// fieldType.FullName - may need this later
+
+				// make an array-table entry
+				int FK = buildArrayTable(field.GetValue(parentObj));
 				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, ArrayTableName, FK);
 				table.AddColumn(col);
 
 				// Condition 5: Complex Sub-Component
 			} else {
 				// this is a complex type (a class or something), so recurse
-				//if (!fieldType.Name.Contains("IEqualityComparer`1")) {		// WARNING: Research this!
-					int FK = buildComplexObjectTable(field.GetValue(parentObj));   // we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
+				int FK = buildComplexObjectTable(field.GetValue(parentObj));   // we need a Foreign Key (otherwise objects would randomize themselves across the object structure on each load [goofy effect])
 
-					SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
-					table.AddColumn(col);
-				//}
+				SerializedObjectColumn col = new SerializedObjectColumn(field.Name, fieldType.FullName, FK);
+				table.AddColumn(col);
 			}
 		}
 
