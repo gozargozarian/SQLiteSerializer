@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
@@ -12,7 +13,7 @@ using System.Collections;
 
 namespace SQLiteSerialization {
 	public class SQLiteSerializer {
-		public static string Version = "1.0.5b";
+		public static string Version = "1.0.6b";
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
 
@@ -131,7 +132,7 @@ namespace SQLiteSerialization {
 						insertColValue.AppendFormat("(@v{0},@v{1},@v{2}", UIDParamNo, bindParams.Count,bindParams.Count + 1);
 						bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.key));
 						if (!SerializeUtilities.IsSimpleValue(sarr.ValueType) && (int)item.value == -1)
-							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, null));
+							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, null));		// lol, be careful with this nulling when -1 thing
 						else
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
@@ -223,32 +224,80 @@ namespace SQLiteSerialization {
 
 			ArrayStorageDefinition definition = readArrayTableDefinition(UID);
 			switch (definition.type) {
-				case LinearObjectType.SystemArray:      //typeof(T).IsArray
+				case LinearObjectType.SystemArray:
 					{
-						List<string> items = new List<string>();
-						Type containerType = typeof(T).GetElementType();
-
-						Dictionary<int, string> entries = readStdArrayTableEntries(UID);
-						foreach (KeyValuePair<int, string> pair in entries) {
-							items.Add(pair.Value);
-						}
-						Array completeArr = (Array)SerializeUtilities.CreateUninitializedObject(typeof(T), items.Count);
-						for (int i = 0; i < items.Count; i++) {
-							if (SerializeUtilities.IsSimpleValue(containerType)) {
-								if (containerType.IsEnum)
-									completeArr.SetValue(Enum.ToObject(containerType, items[i]), i);
-								else
-									completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
-							} else {
-								object o = SerializeUtilities.CallGenericMethodWithReflection(
-									this, "readSQLTableToObject",
-									new Type[] { containerType },
-									new object[] { castRawSQLiteArrayVal(items[i], containerType) }
-								);
-								completeArr.SetValue(o, i);
+						Type arrayType = typeof(T);
+                        Type containerType = arrayType.GetElementType();
+						if (arrayType.GetArrayRank() == 1) {
+							List<string> items = new List<string>();
+							Dictionary<int, string> entries = readStdArrayTableEntries(UID);
+							foreach (KeyValuePair<int, string> pair in entries) {
+								items.Add(pair.Value);
 							}
+							Array completeArr = (Array)SerializeUtilities.CreateUninitializedObject(typeof(T), items.Count);
+							for (int i = 0; i < items.Count; i++) {
+								if (SerializeUtilities.IsSimpleValue(containerType)) {
+									if (containerType.IsEnum)
+										completeArr.SetValue(Enum.ToObject(containerType, items[i]), i);
+									else
+										completeArr.SetValue(castRawSQLiteArrayVal(items[i], containerType), i);
+								} else {
+									object o = SerializeUtilities.CallGenericMethodWithReflection(
+										this, "readSQLTableToObject",
+										new Type[] { containerType },
+										new object[] { castRawSQLiteArrayVal(items[i], containerType) }
+									);
+									completeArr.SetValue(o, i);
+								}
+							}
+							container = (T)Convert.ChangeType(completeArr, typeof(T));
+						} else {
+							Dictionary<string, string> entries = readMultiDimensionalArrayTableEntries(UID);
+							List<long> dimensionRanges = new List<long>();
+
+							int dims = 0;
+							do {
+								var result = from element in entries.Keys
+											 orderby element ascending
+											 where element.ToString().StartsWith(dims + "x")
+											 select element;
+								long c = result.Count();
+								if (c > 0)
+									dimensionRanges.Add(result.Count());
+								dims++;
+                            } while (dims == dimensionRanges.Count);
+							dims = dimensionRanges.Count;
+
+							Array completeArr = (Array)SerializeUtilities.CreateUninitializedObject(typeof(T), dimensionRanges.ToArray());
+
+							long[] indicies = new long[dims];
+							foreach (KeyValuePair<string,string> entry in entries) {
+								// build in the index
+								string[] preIndex = entry.Key.ToString().Split('x');
+								for (long i=0; i < preIndex.LongLength; i++) {
+									indicies[i] = long.Parse(preIndex[i]);
+								}
+
+								// pull the value
+								object val;
+								if (SerializeUtilities.IsSimpleValue(containerType)) {
+									if (containerType.IsEnum)
+										val = Enum.ToObject(containerType, entry.Value);
+									else
+										val = castRawSQLiteArrayVal(entry.Value, containerType);
+								} else {
+									val = SerializeUtilities.CallGenericMethodWithReflection(
+										this, "readSQLTableToObject",
+										new Type[] { containerType },
+										new object[] { castRawSQLiteArrayVal(entry.Value, containerType) }
+									);
+								}
+
+								// slap it with a fish
+								completeArr.SetValue(val, indicies);
+							}
+							container = (T)Convert.ChangeType(completeArr, typeof(T));
 						}
-						container = (T)Convert.ChangeType(completeArr, typeof(T));
 					}
 					break;
 
@@ -409,15 +458,53 @@ namespace SQLiteSerialization {
 			switch (arrayDef.ArrayType) {
 				case LinearObjectType.SystemArray:
 					Array arrHolder = (Array)target;
-					for (uint index = 0; index < arrHolder.Length; index++) {
-						object val = arrHolder.GetValue(index);
-						if (val != null) {		// arrays should never have non-contiguous values, so nulls are just the pre-alloced storage space
-							if (SerializeUtilities.IsSimpleValue(val.GetType())) {
-								arrayDef.AddValues(index, val);
-							} else {
-								arrayDef.AddValues(index, buildComplexObjectTable(val));
+					int arrDimensions = arrHolder.Rank;
+					if (arrDimensions == 1) {
+						for (int index = arrHolder.GetLowerBound(0); index <= arrHolder.GetUpperBound(0); index++) {
+							object val = arrHolder.GetValue(index);
+							if (val != null) {      // arrays should never have non-contiguous values, so nulls are just the pre-alloced storage space
+								if (SerializeUtilities.IsSimpleValue(localType.GetElementType())) {
+									arrayDef.AddValues(index, val);
+								} else {
+									arrayDef.AddValues(index, buildComplexObjectTable(val));
+								}
 							}
 						}
+					} else {    // the internet was useless for generically looping over a multidimensional array (so, if it is wrong, it's all me)
+						// setup the ranges of dimensional indexability
+						KeyValuePair<long, long>[] dimensionRanges = new KeyValuePair<long, long>[arrDimensions];
+						long[] indicies = new long[arrDimensions];
+						indicies.Initialize();      // zeroes out the indicies
+						for (int dimension = 0; dimension < arrDimensions; dimension++) {
+							dimensionRanges[dimension] = new KeyValuePair<long, long>(arrHolder.GetLowerBound(dimension), arrHolder.GetUpperBound(dimension));
+							indicies[dimension] = arrHolder.GetLowerBound(dimension);
+						}
+
+						bool workinIt = true;
+						do {
+							// turns out do-while loops are useful for truely fucked up shit
+							object val = arrHolder.GetValue(indicies);
+							if (val != null) {
+								if (SerializeUtilities.IsSimpleValue(localType.GetElementType())) {
+									arrayDef.AddValues(string.Join<long>("x",indicies),val);
+								} else {
+									arrayDef.AddValues(string.Join<long>("x", indicies), buildComplexObjectTable(val));
+								}
+							}
+
+							// take a step...
+							try {
+								int dimInc = arrDimensions - 1;
+								for (;;) {
+									indicies[dimInc]++;
+									if (indicies[dimInc] > dimensionRanges[dimInc].Value) {    // greater than upper bound?
+										indicies[dimInc] = dimensionRanges[dimInc].Key;        // ...then set it back to lower and move up
+										dimInc--;
+									} else { break; }
+									if (dimInc < 0) { workinIt = false; break; }
+								}
+							} catch { workinIt = false; }
+						} while (workinIt);
 					}
 					break;
 
@@ -607,6 +694,25 @@ namespace SQLiteSerialization {
 				else
 					val = dr["__value__"].ToString();
 				arrayEntries.Add(key,val);
+			}
+
+			return arrayEntries;
+		}
+
+		protected Dictionary<string,string> readMultiDimensionalArrayTableEntries(int UID) {
+			Dictionary<string, string> arrayEntries = new Dictionary<string, string>();
+			string sql = string.Format("SELECT __key__,__value__ FROM {0}_entries WHERE UID = {1} ORDER BY PK", ArrayTableName, UID);
+			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
+			SQLiteDataReader dr = cmd.ExecuteReader();
+
+			while (dr.Read()) {
+				string key = dr["__key__"].ToString();
+				string val;
+				if (dr.IsDBNull(dr.GetOrdinal("__value__")))
+					val = null;
+				else
+					val = dr["__value__"].ToString();
+				arrayEntries.Add(key, val);
 			}
 
 			return arrayEntries;

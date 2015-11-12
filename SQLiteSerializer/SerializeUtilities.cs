@@ -73,7 +73,7 @@ namespace SQLiteSerialization {
 
 		#region Reflection Helpers
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		public static object CreateUninitializedObject(Type t,int arrayLength=0) {
+		public static object CreateUninitializedObject(Type t,long arrayLength=0) {
 			if (t.IsAbstract) return null;
 			try {
 				if (t.Name == "String")     // strings need specific handling of all the types in C#
@@ -86,6 +86,10 @@ namespace SQLiteSerialization {
 				// ... oh well
 				return FormatterServices.GetUninitializedObject(t);
 			}
+		}
+		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		public static object CreateUninitializedObject(Type t, long[] arrayLengths) {
+			return Array.CreateInstance(t.GetElementType(), arrayLengths);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]

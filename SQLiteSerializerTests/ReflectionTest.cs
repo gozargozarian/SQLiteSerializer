@@ -272,6 +272,49 @@ namespace SQLiteSerializerTests {
 
 		[TestMethod]
 		[TestCategory("Reflection")]
+		public void Reflection_LoopingOnMultiDimensionalArrays() {
+			int[,,] test = new int[3, 3, 3] {
+				{ { 111,112,113 },{ 121,122,123 },{ 131,132,133 } },
+				{ { 211,212,213 },{ 221,222,223 },{ 231,232,233 } },
+				{ { 311,312,313 },{ 321,322,323 },{ 331,332,333 } }
+			};
+
+			Array arrHolder = (Array)test;
+			int arrDimensions = arrHolder.Rank;
+
+			// setup the ranges of dimensional indexability
+			KeyValuePair<long, long>[] dimensionRanges = new KeyValuePair<long, long>[arrDimensions];
+			long[] indicies = new long[arrDimensions];
+			indicies.Initialize();      // zeroes out the indicies
+			for (int dimension = 0; dimension < arrDimensions; dimension++) {
+				dimensionRanges[dimension] = new KeyValuePair<long, long>(arrHolder.GetLowerBound(dimension), arrHolder.GetUpperBound(dimension));
+				indicies[dimension] = arrHolder.GetLowerBound(dimension);
+            }
+
+			bool workinIt = true;
+			do {
+				// turns out do-while loops are useful for truely fucked up shit
+				int val = (int)arrHolder.GetValue(indicies);
+
+				// take a step...
+				try {
+					int dimInc = arrDimensions-1;
+					for (;;) {
+						indicies[dimInc]++;
+						if (indicies[dimInc] > dimensionRanges[dimInc].Value) {    // greater than upper bound?
+							indicies[dimInc] = dimensionRanges[dimInc].Key;         // ...then set it back to lower and move up
+							dimInc--;
+						} else { break; }
+						if (dimInc < 0) { workinIt = false; break; }
+					}
+				} catch { workinIt = false; }
+			} while (workinIt);
+
+			Assert.IsTrue(true);	// fuck it, more of a demo
+		}
+
+		[TestMethod]
+		[TestCategory("Reflection")]
 		public void Reflection_ArrayAndGenericCastingTest() {
 			int[] test = new int[5] { 1, 2, 3, 4, 5 };		// just to compare
 			int[] target = helperTest<int[]>();

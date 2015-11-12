@@ -1,7 +1,7 @@
 A C# Serializer for storing objects to a SQLite Database in a human-readable format
 -----------------------------------------------------------------------------------
 Current Status: **BETA**<br />
-Current Version: **1.0.5b**
+Current Version: **1.0.6b**
 
 The goal of this project is to be able to serialize an object to a SQLite database
 and visually be able to inspect the tables and columns to see your type stored
@@ -16,6 +16,4 @@ Serializable attribute being set on the class.
 
 Known Issues
 ------------
-- Multi-dimensional arrays are not supported, but will be soon.
-
-* If you find any issues with objects or types that are not handled properly, please report them and provide a working example, if possible.
+If you find any issues with objects or types that are not handled properly, please report them and provide a working example, if possible.

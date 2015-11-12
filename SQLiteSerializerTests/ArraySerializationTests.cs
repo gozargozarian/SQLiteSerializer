@@ -44,16 +44,50 @@ namespace SQLiteSerializerTests {
 		[TestMethod]
 		[TestCategory("Arrays")]
 		public void Array_MultidimensionalArrayTest() {
-			string[,] test = new string[2,2] { { "blah", "barg" }, { "eek", "scream" } };
+			int[,,] test = new int[3, 3, 3] {
+				{ { 111,112,113 },{ 121,122,123 },{ 131,132,133 } },
+				{ { 211,212,213 },{ 221,222,223 },{ 231,232,233 } },
+				{ { 311,312,313 },{ 321,322,323 },{ 331,332,333 } }
+			};
+			MyTestSerializeRun(test);
+
+			int[,,] result = MyTestDeserializeRun<int[,,]>();
+			Assert.IsTrue(test[0,0,0] == result[0,0,0] 
+				&& test[0,1,0] == result[0,1,0] 
+				&& test[1,0,0] == result[1,0,0]
+				&& test[1,1,0] == result[1,1,0]
+				&& test[2, 0, 0] == result[2, 0, 0]
+				&& test[2, 1, 0] == result[2, 1, 0]
+
+				&& test[0, 0, 1] == result[0, 0, 1]
+				&& test[0, 1, 1] == result[0, 1, 1]
+				&& test[1, 0, 1] == result[1, 0, 1]
+				&& test[1, 1, 1] == result[1, 1, 1]
+				&& test[2, 0, 1] == result[2, 0, 1]
+				&& test[2, 1, 1] == result[2, 1, 1]
+
+				&& test[0, 0, 2] == result[0, 0, 2]
+				&& test[0, 1, 2] == result[0, 1, 2]
+				&& test[1, 0, 2] == result[1, 0, 2]
+				&& test[1, 1, 2] == result[1, 1, 2]
+				&& test[2, 0, 2] == result[2, 0, 2]
+				&& test[2, 1, 2] == result[2, 1, 2]
+			);
+        }
+
+		[TestMethod]
+		[TestCategory("Arrays")]
+		public void Array_MultidimensionalArrayTest2() {
+			string[,] test = new string[2, 2] { { "blah", "barg" }, { "eek", "scream" } };
 			MyTestSerializeRun(test);
 
 			string[,] result = MyTestDeserializeRun<string[,]>();
-			Assert.IsTrue(test[0 ,0] == result[0, 0] 
-				&& test[0, 1] == result[0, 1] 
+			Assert.IsTrue(test[0, 0] == result[0, 0]
+				&& test[0, 1] == result[0, 1]
 				&& test[1, 0] == result[1, 0]
 				&& test[1, 1] == result[1, 1]
 			);
-        }
+		}
 
 		[TestMethod]
 		[TestCategory("Arrays")]
