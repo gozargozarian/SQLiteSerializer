@@ -192,7 +192,7 @@ namespace SQLiteSerialization {
 					FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
                     foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
-						if (col == null) continue;		// TODO: WARNING: Research this!
+						if (col == null) continue;
                         object val = col.columnValue;
 						Type castableType = field.FieldType;
 						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
@@ -394,8 +394,6 @@ namespace SQLiteSerialization {
 			int localPK = ++primaryKeyCount;
 			serializedObjects.Add(target, localPK);
 			
-			//localType.Module	- TODO: add this to info tables
-			//localType.AssemblyQualifiedName	- TODO: add this to info tables
 			SerializedObjectTableRow table = new SerializedObjectTableRow(localPK,localType);
 
 			if (SerializeUtilities.IsSimpleValue(localType)) { // if you passed in a simple value, we need to handle table construction
@@ -464,9 +462,9 @@ namespace SQLiteSerialization {
 							object val = arrHolder.GetValue(index);
 							if (val != null) {      // arrays should never have non-contiguous values, so nulls are just the pre-alloced storage space
 								if (SerializeUtilities.IsSimpleValue(localType.GetElementType())) {
-									arrayDef.AddValues(index, val);
+									arrayDef.AddValues((long)index, val);
 								} else {
-									arrayDef.AddValues(index, buildComplexObjectTable(val));
+									arrayDef.AddValues((long)index, buildComplexObjectTable(val));
 								}
 							}
 						}
@@ -754,7 +752,7 @@ namespace SQLiteSerialization {
 					else
 						colval = dr.GetValue(ci);
 
-					colname = colTypeStripper.Replace(colname,"");		// TODO: Replace Regex dependency with smarter code
+					colname = colTypeStripper.Replace(colname,"");
                     entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
                 }
 			}

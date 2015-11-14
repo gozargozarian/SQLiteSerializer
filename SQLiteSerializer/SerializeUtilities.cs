@@ -107,7 +107,6 @@ namespace SQLiteSerialization {
 
 		// Basic reflection does a nice job return fields, but doesn't do a great job supporting inherited fields; even using BindingFlags.FlattenHierarchy
 		public static FieldInfo[] GetObjectFields(Type targetType) {
-			// TODO: Rethink or add a toggle for BindingFlags.Static because not everyone wants all of their classes affected during one deserialize op
 			List<FieldInfo> localfields = new List<FieldInfo>(
 				targetType.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)  //| BindingFlags.Static
 			);
