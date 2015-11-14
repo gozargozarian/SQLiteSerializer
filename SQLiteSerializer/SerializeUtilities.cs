@@ -60,14 +60,13 @@ namespace SQLiteSerialization {
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsSimpleValue(Type type) {
-			// || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>) return IsSimple(type.GetGenericArguments()[0])
 			if (type.IsGenericType)
 				if (type.GetGenericTypeDefinition() == typeof(Nullable<>))
 					return IsSimpleValue(type.GetGenericArguments()[0]);
 				else
 					return false;
 			else
-				return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)));    //|| type.Equals(typeof(DateTime))
+				return (type.IsPrimitive || type.IsEnum || type.IsValueType || type.Equals(typeof(string)));
 		}
 		#endregion
 
