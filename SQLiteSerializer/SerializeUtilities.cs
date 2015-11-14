@@ -7,18 +7,18 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-// TODO: Investigate the portability of [MethodImpl(MethodImplOptions.AggressiveInlining)]
+// TODO: Investigate the portability of [MethodImpl(MethodImplOptions.AggressiveInlining)] - commented out for now, even though it was faster
 namespace SQLiteSerialization {
 	public static class SerializeUtilities {
 		static Regex safeSQLTypeRegEx = new Regex("");
 
 		#region SQLite Formatting
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string MakeSafeColumn(string variableName) {
 			return variableName.Replace("<", "").Replace(">", "");
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
+		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string MakeSafeSQLType(string sqlType) {
 			StringBuilder typename = new StringBuilder( CleanTypeNameFromString(sqlType) );
 			if (sqlType.Contains('`')) {
@@ -40,16 +40,13 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Type Detection
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsSystemArrayLike(Type arraylikeType) {
 			return (arraylikeType.IsArray && (arraylikeType.BaseType.FullName == "System.Array" || arraylikeType.IsAssignableFrom(typeof(Array))));
         }
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsListLike(Type listLikeType) {
 			// NOTE: this method doesn't detect ancestor inheritance of List for a specific reason
 			return (listLikeType.GetGenericArguments().Length == 1 && listLikeType.GetInterface(typeof(IEnumerable<>).FullName) != null && !listLikeType.IsArray);
 		}
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsDictionaryLike(Type dictLikeType) {
 			// NOTE: this method doesn't detect ancestor inheritance of Dictionary for a specific reason
 			return (dictLikeType.GetGenericArguments().Length == 2 && dictLikeType.GetInterface(typeof(IDictionary<,>).FullName) != null);
@@ -58,7 +55,6 @@ namespace SQLiteSerialization {
 			return (IsSystemArrayLike(type) || IsListLike(type) || IsDictionaryLike(type));
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static bool IsSimpleValue(Type type) {
 			if (type.IsGenericType)
 				if (type.GetGenericTypeDefinition() == typeof(Nullable<>))
@@ -71,7 +67,6 @@ namespace SQLiteSerialization {
 		#endregion
 
 		#region Reflection Helpers
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static object CreateUninitializedObject(Type t,long arrayLength=0) {
 			if (t.IsAbstract) return null;
 			try {
@@ -86,17 +81,14 @@ namespace SQLiteSerialization {
 				return FormatterServices.GetUninitializedObject(t);
 			}
 		}
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static object CreateUninitializedObject(Type t, long[] arrayLengths) {
 			return Array.CreateInstance(t.GetElementType(), arrayLengths);
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string CleanTypeNameFromString(string typeName) {
 			return typeName.Replace(".", "_").Replace("<", "").Replace(">", "").Split('`')[0];
 		}
 
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static object CallGenericMethodWithReflection(object caller,string methodName,Type[] genericsArray,object[] parameters=null) {
 			// do something awful...
 			return caller.GetType().GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Instance)
