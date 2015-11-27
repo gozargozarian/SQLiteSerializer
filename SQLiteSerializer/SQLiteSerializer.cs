@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 using System.IO;
 using System.Collections;
 
-namespace SQLiteSerialization {
+namespace SQLiteSerializer {
 	public class SQLiteSerializer {
 		public static string Version = "1.0.6b";
 		public static string ArrayTableName = "arrays";

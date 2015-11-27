@@ -1,7 +1,6 @@
 A C# Serializer for storing objects to a SQLite Database in a human-readable format
 -----------------------------------------------------------------------------------
-Current Status: **BETA**<br />
-Current Version: **1.0.6b**
+Current Version: **1.0.6**
 
 The goal of this project is to be able to serialize an object to a SQLite database
 and visually be able to inspect the tables and columns to see your type stored

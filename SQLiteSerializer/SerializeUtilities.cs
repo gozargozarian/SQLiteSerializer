@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 
 // TODO: Investigate the portability of [MethodImpl(MethodImplOptions.AggressiveInlining)] - commented out for now, even though it was faster
-namespace SQLiteSerialization {
+namespace SQLiteSerializer {
 	public static class SerializeUtilities {
 		static Regex safeSQLTypeRegEx = new Regex("");
 

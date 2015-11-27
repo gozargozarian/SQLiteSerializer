@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SQLiteSerialization {
+namespace SQLiteSerializer {
 	public class SerializedObjectColumn : IEquatable<SerializedObjectColumn> {
 		public string columnName { get; set; }
 		public object columnValue { get; set; }

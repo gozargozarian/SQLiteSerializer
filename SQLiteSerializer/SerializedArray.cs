@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SQLiteSerialization {
+namespace SQLiteSerializer {
 	public struct ArrayStorageDefinition {
 		public LinearObjectType type;
 		public Type linearObjectTypeName;
