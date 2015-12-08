@@ -13,7 +13,6 @@ namespace SQLiteSerializer {
 	public static class SerializeUtilities {
 		static Regex safeSQLTypeRegEx = new Regex("");
 		static Hashtable sqlCleanTypes = new Hashtable(100);
-		//static Dictionary<string,string> sqlCleanTypes = new Dictionary<string, string>();
 
 		public static void Clean() { sqlCleanTypes.Clear(); }
 
