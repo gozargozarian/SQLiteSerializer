@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -11,6 +12,10 @@ using System.Text.RegularExpressions;
 namespace SQLiteSerializer {
 	public static class SerializeUtilities {
 		static Regex safeSQLTypeRegEx = new Regex("");
+		static Hashtable sqlCleanTypes = new Hashtable(100);
+		//static Dictionary<string,string> sqlCleanTypes = new Dictionary<string, string>();
+
+		public static void Clean() { sqlCleanTypes.Clear(); }
 
 		#region SQLite Formatting
 		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -20,24 +25,30 @@ namespace SQLiteSerializer {
 
 		//[MethodImpl(MethodImplOptions.AggressiveInlining)]
 		public static string MakeSafeSQLType(string sqlType) {
-			StringBuilder typename = new StringBuilder( CleanTypeNameFromString(sqlType) );
-			if (sqlType.Contains('`')) {
-				string genericString = sqlType.Split('`')[1];
-				int genericsCount = int.Parse((genericString.Contains("+") ? genericString.Split('+')[0] : genericString.Split('[')[0]));
-				typename.AppendFormat("_{0}", genericString.Split('[')[0].Replace("+",""));
+			if (sqlCleanTypes.ContainsKey(sqlType)) {
+				return (string)sqlCleanTypes[sqlType];
+			} else {
+				StringBuilder typename = new StringBuilder(CleanTypeNameFromString(sqlType));
+				if (sqlType.Contains('`')) {
+					string genericString = sqlType.Split('`')[1];
+					int genericsCount = int.Parse((genericString.Contains("+") ? genericString.Split('+')[0] : genericString.Split('[')[0]));
+					typename.AppendFormat("_{0}", genericString.Split('[')[0].Replace("+", ""));
 
-				genericString = genericString.Replace("[[", "[").Replace("]]", "]");
-				string[] generics = genericString.Split(new char[] { '[',']' },StringSplitOptions.RemoveEmptyEntries);
-				for (int index=1; index <= genericsCount; index++) {
-					if (generics[index] == ",") continue;
-					string subtypename = generics[index].Split(',')[0];
-                    typename.AppendFormat("_{0}", MakeSafeSQLType(subtypename));
+					genericString = genericString.Replace("[[", "[").Replace("]]", "]");
+					string[] generics = genericString.Split(new char[] { '[', ']' }, StringSplitOptions.RemoveEmptyEntries);
+					for (int index = 1; index <= genericsCount; index++) {
+						if (generics[index] == ",") continue;
+						string subtypename = generics[index].Split(',')[0];
+						typename.AppendFormat("_{0}", MakeSafeSQLType(subtypename));
+					}
+				} else if (sqlType.Contains('+')) {
+					typename = typename.Replace('+', '_');
 				}
-            } else if (sqlType.Contains('+')) {
-				typename = typename.Replace('+', '_');
-			}
 
-			return typename.ToString();
+				string completeType = typename.ToString();
+				sqlCleanTypes.Add(sqlType, completeType);
+				return completeType;
+			}
         }
 		#endregion
 

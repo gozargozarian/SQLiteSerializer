@@ -44,6 +44,8 @@ namespace SQLiteSerializer {
 
 			serialTable = new Dictionary<long, SerialObjectsDefintion>(0);
 			deserializedObjects = new Dictionary<long, object>(0);
+
+			SerializeUtilities.Clean();
         }
 
 		public void Serialize(object target, string databaseConnectionString, bool autoDeleteExistingFile=true) {
@@ -67,7 +69,11 @@ namespace SQLiteSerializer {
 				string c = sqlDefinitionRegion.Append(sqlDataRegion).ToString();
                 SQLiteCommand cmd = new SQLiteCommand(c, globalConn);
 				cmd.Parameters.AddRange(bindParams.ToArray());
-                cmd.ExecuteNonQuery();
+				using (var transaction = globalConn.BeginTransaction()) {
+					cmd.ExecuteNonQuery();
+
+					transaction.Commit();
+				}
 			}
 			closeSQLConnection();
 			CleanUp();
