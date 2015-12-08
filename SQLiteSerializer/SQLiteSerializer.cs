@@ -19,7 +19,7 @@ namespace SQLiteSerializer {
 
 		protected SQLiteConnection globalConn;
 		protected StringBuilder sqlDefinitionRegion = new StringBuilder();		// sql here defines tables
-        protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
+        	protected StringBuilder sqlDataRegion = new StringBuilder();            // sql here fills tables with data
 
 		// Serialize vars
 		protected int primaryKeyCount = 0;
@@ -46,7 +46,7 @@ namespace SQLiteSerializer {
 			deserializedObjects = new Dictionary<long, object>(0);
 
 			SerializeUtilities.Clean();
-        }
+        	}
 
 		public void Serialize(object target, string databaseConnectionString, bool autoDeleteExistingFile=true) {
 			if (File.Exists(databaseConnectionString.Replace("data source","").Replace("=","").Trim())) {   // TODO: this sucks, do something better later
@@ -67,7 +67,7 @@ namespace SQLiteSerializer {
 			openSQLConnection(databaseConnectionString);
 			if (isSQLiteReady()) {
 				string c = sqlDefinitionRegion.Append(sqlDataRegion).ToString();
-                SQLiteCommand cmd = new SQLiteCommand(c, globalConn);
+                		SQLiteCommand cmd = new SQLiteCommand(c, globalConn);
 				cmd.Parameters.AddRange(bindParams.ToArray());
 				using (var transaction = globalConn.BeginTransaction()) {
 					cmd.ExecuteNonQuery();
@@ -125,7 +125,7 @@ namespace SQLiteSerializer {
 					sqlDataRegion.AppendFormat("INSERT INTO {0}(UID,type,typename,key_type,value_type) VALUES (@v{1},@v{2},@v{3},@v{4},@v{5});{6}{6}",
 												new object[] { ArrayTableName,bindParams.Count,bindParams.Count+1,bindParams.Count+2,bindParams.Count+3,bindParams.Count+4,Environment.NewLine });
 					UIDParamNo = bindParams.Count;
-                    bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
+                    			bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.UniqueID));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, (int)sarr.ArrayType));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.TypeName));
 					bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, sarr.KeyType.AssemblyQualifiedName));   // .FullName
@@ -142,7 +142,7 @@ namespace SQLiteSerializer {
 						else
 							bindParams.Add(new SQLiteParameter("@v" + bindParams.Count, item.value));
 					}
-                } else {
+                		} else {
 					sqlDataRegion.AppendFormat("INSERT INTO {4}(UID,location,typename) VALUES ({0},'{1}','{2}');{3}{3}", new object[] { table.UniqueID, table.TableNameSQL, table.ObjectType, Environment.NewLine, SerialInfoTableName });
 					sqlDataRegion.AppendFormat("INSERT INTO {0}", table.TableNameSQL);
 					insertColDef.Append("(UID");
@@ -170,7 +170,7 @@ namespace SQLiteSerializer {
 
 				if (doTableCreate && !isArrayTable) sqlDefinitionRegion.AppendFormat("{0});{1}{1}", tableDefFK, Environment.NewLine);
 				sqlDataRegion.AppendFormat("{0}) VALUES {1});{2}{2}",insertColDef,insertColValue, Environment.NewLine);
-            }
+            		}
 
 			//sqlDataRegion.Append("VACUUM");		// not sure if this is really needed when we are only doing one write
 			return bindParams;
@@ -193,13 +193,13 @@ namespace SQLiteSerializer {
 				SerializedObjectTableRow table = readOneTableEntry(UID, tablename);
 				if (SerializeUtilities.IsSimpleValue(localType)) {
 					object val = table.Columns.Find(x => x.columnName.EndsWith("__value__")).columnValue;
-                    container = (T)Convert.ChangeType(val, localType);
-                } else {
+                    			container = (T)Convert.ChangeType(val, localType);
+                		} else {
 					FieldInfo[] fields = SerializeUtilities.GetObjectFields(localType);
-                    foreach (FieldInfo field in fields) {
+                    			foreach (FieldInfo field in fields) {
 						SerializedObjectColumn col = table.Columns.Find(x => x.columnName.Equals( SerializeUtilities.MakeSafeColumn(field.Name) ));
 						if (col == null) continue;
-                        object val = col.columnValue;
+                        			object val = col.columnValue;
 						Type castableType = field.FieldType;
 						if (!SerializeUtilities.IsSimpleValue(field.FieldType) && val != null) {
 							if (serialTable.ContainsKey((long)col.columnValue)) { castableType = serialTable[(long)col.columnValue].storageType ?? field.FieldType; }
@@ -212,7 +212,7 @@ namespace SQLiteSerializer {
 								);
 								deserializedObjects.Add((long)col.columnValue, val);
 							} else { val = deserializedObjects[(long)col.columnValue]; }
-                        }
+                        			}
 						//localType.InvokeMember("next", BindingFlags.SetField | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.DefaultBinder, container, new object[] { val });
 						if (field.FieldType.IsEnum)
 							field.SetValue(container, Enum.ToObject(field.FieldType, val));
@@ -233,7 +233,7 @@ namespace SQLiteSerializer {
 				case LinearObjectType.SystemArray:
 					{
 						Type arrayType = typeof(T);
-                        Type containerType = arrayType.GetElementType();
+                        			Type containerType = arrayType.GetElementType();
 						if (arrayType.GetArrayRank() == 1) {
 							List<string> items = new List<string>();
 							Dictionary<int, string> entries = readStdArrayTableEntries(UID);
@@ -271,7 +271,7 @@ namespace SQLiteSerializer {
 								if (c > 0)
 									dimensionRanges.Add(result.Count());
 								dims++;
-                            } while (dims == dimensionRanges.Count);
+                            				} while (dims == dimensionRanges.Count);
 							dims = dimensionRanges.Count;
 
 							Array completeArr = (Array)SerializeUtilities.CreateUninitializedObject(typeof(T), dimensionRanges.ToArray());
@@ -523,7 +523,7 @@ namespace SQLiteSerializer {
 							arrayDef.AddValues(indexCnt, buildComplexObjectTable(item));
 						}
 						indexCnt++;
-                    }
+                    			}
 					break;
 
 				case LinearObjectType.IDictionaryFamily:
@@ -587,15 +587,15 @@ namespace SQLiteSerializer {
 
 		// databaseConnectionString = can actually just be a file path, but optional pass complex connection strings
 		protected void openSQLConnection(string connectionString) {
-            globalConn = new SQLiteConnection(formatConnectionString(connectionString));
+            		globalConn = new SQLiteConnection(formatConnectionString(connectionString));
 			globalConn.Open();
 		}
 
 		protected string formatConnectionString(string connectionString) {
 			if (connectionString.IndexOf("URI") < 0)
 				connectionString = "data source = " + connectionString;
-            return connectionString;
-        }
+            		return connectionString;
+        	}
 
 		protected void closeSQLConnection() {
 			globalConn.Close();
@@ -603,7 +603,7 @@ namespace SQLiteSerializer {
 
 		protected Dictionary<long, SerialObjectsDefintion> readSerialSQLTable() {
 			Dictionary<long, SerialObjectsDefintion> serialTable = new Dictionary<long, SerialObjectsDefintion>();
-            string sql = string.Format("SELECT UID,location,typename FROM {0} ORDER BY UID", SerialInfoTableName);
+            		string sql = string.Format("SELECT UID,location,typename FROM {0} ORDER BY UID", SerialInfoTableName);
 			SQLiteCommand cmd = new SQLiteCommand(sql, globalConn);
 			SQLiteDataReader dr = cmd.ExecuteReader();
 
@@ -678,7 +678,7 @@ namespace SQLiteSerializer {
 			dr.Read();
 			ArrayStorageDefinition def = new ArrayStorageDefinition();
 			def.type = (LinearObjectType)Convert.ToInt32(dr["type"]);
-            def.linearObjectTypeName = Type.GetType(dr["typename"].ToString());
+            		def.linearObjectTypeName = Type.GetType(dr["typename"].ToString());
 			def.keyTypeName = Type.GetType(dr["key_type"].ToString());
 			def.valueTypeName = Type.GetType(dr["value_type"].ToString());
 
@@ -760,22 +760,22 @@ namespace SQLiteSerializer {
 						colval = dr.GetValue(ci);
 
 					colname = colTypeStripper.Replace(colname,"");
-                    entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
-                }
+                    			entry.AddColumn(new SerializedObjectColumn(colname,coltype,colval));
+                		}
 			}
 			return entry;
 
 			// TODO: Make this faster by using the below code to read entire table the first time requested and cache it. Then, return each row on each call
 			/***
 			 SqlConnection conn = new SqlConnection("connectionstringhere");
-            SqlCommand cmd = new SqlCommand("SELECT * FROM TABLE", conn);
-            SqlDataAdapter da = new SqlDataAdapter(cmd);
-            DataTable dt = new DataTable();
-            da.Fill(dt);
-            foreach (DataRow dr in dt.Rows)
-            {
-                MyFunction(dr["Id"].ToString(), dr["Name"].ToString());
-            }
+		            SqlCommand cmd = new SqlCommand("SELECT * FROM TABLE", conn);
+		            SqlDataAdapter da = new SqlDataAdapter(cmd);
+		            DataTable dt = new DataTable();
+		            da.Fill(dt);
+		            foreach (DataRow dr in dt.Rows)
+		            {
+		                MyFunction(dr["Id"].ToString(), dr["Name"].ToString());
+		            }
 			***/
 		}
 		#endregion
