@@ -33,7 +33,9 @@ namespace SQLiteSerializer {
 					string subtypename = generics[index].Split(',')[0];
                     typename.AppendFormat("_{0}", MakeSafeSQLType(subtypename));
 				}
-            }
+            } else if (sqlType.Contains('+')) {
+				typename = typename.Replace('+', '_');
+			}
 
 			return typename.ToString();
         }

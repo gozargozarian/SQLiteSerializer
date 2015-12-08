@@ -13,7 +13,7 @@ using System.Collections;
 
 namespace SQLiteSerializer {
 	public class SQLiteSerializer {
-		public static string Version = "1.0.6b";
+		public static string Version = "1.0.7";
 		public static string ArrayTableName = "arrays";
 		public static string SerialInfoTableName = "serial_info";
 
@@ -383,6 +383,7 @@ namespace SQLiteSerializer {
 				return serializedObjects[target];     // return the already proc'ed PK
 
 			Type localType = target.GetType();
+			if (localType.FullName == "System.Object") { return -1; }
 			// interestingly, my serializer doesn't require [Serializable] because it is pure reflection. Serializers probably use FormatterServices.
 			//if (!canSerialize(target))
 			//	throw new Exception("Your object is not serializable! Please add [Serializable] to the class definition for " + localType.Name + " and all child objects you are attempting to store.");

@@ -1,5 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
+using System.Dynamic;
 
 namespace SQLiteSerializerTests {
 	[TestClass]
@@ -14,7 +15,7 @@ namespace SQLiteSerializerTests {
 
 			string result = MyTestDeserializeRun<string>();
 			Assert.AreEqual(test, result);
-        }
+		}
 
 		[TestMethod]
 		[TestCategory("Simple Tests")]
@@ -89,7 +90,7 @@ namespace SQLiteSerializerTests {
 
 			SimilarVarClass result = MyTestDeserializeRun<SimilarVarClass>();
 			Assert.AreEqual(test, result);
-        }
+		}
 
 		[TestMethod]
 		[TestCategory("Complex Tests")]
@@ -119,12 +120,12 @@ namespace SQLiteSerializerTests {
 
 		/*** TODO: Dynamics may never be supported because the properties of the type are unknown at deserialization time.
 			There would need to be a way of marking this and specifically handling it.
-			Something I did with Inheritence serialization fixed dynamics... Wut?!
+			UPDATE: Something I did with Inheritence serialization fixed dynamics... Wut?!
 		***/
 		[TestMethod]
-		[TestCategory("Special (Possibly Not Supported)")]
+		[TestCategory("Special")]
 		public void Special_TypesDynamicTest() {
-			dynamic test = new { @something="another",@test=42 };
+			dynamic test = new { @something = "another", @test = 42 };
 			MyTestSerializeRun(test);
 
 			dynamic result = MyTestDeserializeRun<dynamic>();
@@ -132,20 +133,35 @@ namespace SQLiteSerializerTests {
 		}
 
 		[TestMethod]
-		[TestCategory("Special (Possibly Not Supported)")]
+		[TestCategory("Special")]
 		public void Special_TypesManyDynamicsTest() {
 			List<dynamic> test = new List<dynamic>();
 			dynamic thing = new { @something = "another", @test = 42 };
 			test.Add(thing);
 			thing = new { @what = 99.0d, @isGoing = "On?" };
 			test.Add(thing);
-			
+
 			MyTestSerializeRun(test);
 
 			List<dynamic> result = MyTestDeserializeRun<List<dynamic>>();
 			Assert.IsTrue(result.Count == 2);
 			Assert.IsTrue(result[0].something == "another" && result[0].test == 42);
 			Assert.IsTrue(result[1].what == 99.0d && result[1].isGoing == "On?");
+		}
+
+		[TestMethod]
+		[TestCategory("Special")]
+		public void Special_TypesExpandoTest() {
+			dynamic expandoPatronum = new ExpandoObject();
+
+			expandoPatronum.stuff = "stuff";
+			expandoPatronum.anotherThing = 24;
+
+			MyTestSerializeRun(expandoPatronum);
+
+			dynamic result = MyTestDeserializeRun<ExpandoObject>();
+			Assert.IsTrue(expandoPatronum.stuff == result.stuff);
+			Assert.IsTrue(expandoPatronum.anotherThing == result.anotherThing);
 		}
 	}
 }
